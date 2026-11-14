@@ -148,6 +148,12 @@ systemctl enable pivista.service
 "$APP_DIR/system/autostart.sh" on
 systemctl set-default graphical.target >/dev/null
 systemctl restart pivista.service
+if systemctl is-enabled pivista-kiosk.service >/dev/null 2>&1; then
+  # (re)start the TV screen now, so an update brings the picture back without a reboot
+  systemctl reset-failed pivista-kiosk.service 2>/dev/null || true
+  systemctl restart pivista-kiosk.service || true
+fi
 
-say "Done! Reboot to start PiVista:  sudo reboot"
+say "Done! First install? Reboot once so the HDMI/boot settings apply:  sudo reboot"
+say "Screen still black? Run:  sudo pivista doctor"
 say "After reboot, scan the dot pattern on the TV with your phone (same Wi-Fi), or open http://$(hostname).local"

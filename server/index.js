@@ -17,7 +17,8 @@ const userapps = require('./userapps');
 
 const PORT = Number(process.env.PIVISTA_PORT || 80);
 const UI_ROOT = path.join(__dirname, '..', 'ui');
-const TV_URL = `http://127.0.0.1:${PORT}/tv/`;
+// Browsers drop the default port, so on port 80 the kiosk reports http://127.0.0.1/tv/ (no :80).
+const TV_URL = PORT === 80 ? 'http://127.0.0.1/tv/' : `http://127.0.0.1:${PORT}/tv/`;
 const TV_ORIGIN = new URL(TV_URL).origin;
 const MAX_UPLOAD = 100 * 1024 * 1024;
 const MIME = { '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript',

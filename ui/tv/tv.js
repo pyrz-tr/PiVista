@@ -14,13 +14,22 @@ const rpc = (() => {
       if (m.t === 'res' && pending.has(m.id)) { pending.get(m.id)(m.error ? { error: m.error } : m.data); pending.delete(m.id); return; }
       listeners.forEach((fn) => fn(m));
     };
-    ws.onclose = () => setTimeout(open, 1500);
+    ws.onopen = () => { const b = document.getElementById('offline'); if (b) b.classList.remove('on'); };
+    ws.onclose = () => {
+      // never leave the TV black: show a notice and keep retrying
+      const b = document.getElementById('offline'); if (b) b.classList.add('on');
+      setTimeout(open, 1500);
+    };
   }
   open();
   return {
-    call(t, args = {}, timeout = 8000) {
+    // Waits up to `timeout` ms for the server, then resolves null so the UI still renders.
+    call(t, args = {}, timeout = 8000, waited = 0) {
       return new Promise((res) => {
-        if (!ws || ws.readyState !== 1) return setTimeout(() => res(rpc.call(t, args, timeout)), 300);
+        if (!ws || ws.readyState !== 1) {
+          if (waited >= Math.min(timeout, 4000)) return res(null);
+          return setTimeout(() => res(rpc.call(t, args, timeout, waited + 300)), 300);
+        }
         const id = ++seq; pending.set(id, res); ws.send(JSON.stringify({ t, id, ...args }));
         setTimeout(() => { if (pending.delete(id)) res(null); }, timeout);
       });
@@ -31,6 +40,14 @@ const rpc = (() => {
 
 let settings = {};
 let apps = [];
+
+// Fit the fixed 1920x1080 layout to whatever mode the monitor ended up in (720p TVs, 1366x768, 4K…)
+(function fitScreen() {
+  const apply = () => { document.body.style.zoom = Math.min(innerWidth / 1920, innerHeight / 1080); };
+  addEventListener('resize', apply);
+  if (document.body) apply(); else addEventListener('DOMContentLoaded', apply);
+})();
+
 
 // ---------------------------------------------------------------- splash
 // Glowing dots fly in and assemble the raspberry logo + wordmark, then a light sweep.
@@ -142,6 +159,7 @@ function show(id, push = true) {
 function back() { show(stack.pop() || 'home', false); }
 // the server opens screens by navigating to /tv/#<screen> (same document → hashchange)
 window.addEventListener('hashchange', () => {
+  scrollTo(0, 0); document.body.scrollTop = 0;
   const id = location.hash.slice(1) || 'home';
   if (id === 'home') { stack.length = 0; show('home', false); } else show(id);
 });

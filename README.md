@@ -155,7 +155,7 @@ Uploaded apps run from `http://localhost/userapps/…`, a separate browser origi
 
 ## Updating
 
-Run the same install command again. It replaces the app in `/opt/pivista`, keeps your settings, paired phones and installed apps (`/var/lib/pivista`), and restarts the server:
+Run `sudo pivista update` (0.3.1 and later), or run the same install command again. It replaces the app in `/opt/pivista`, keeps your settings, paired phones and installed apps (`/var/lib/pivista`), and restarts the server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/claude/kind-mccarthy-xql5k2/scripts/install.sh | sudo bash
@@ -173,6 +173,38 @@ Then restart the TV interface (or reboot):
 pivista restart
 ```
 
+## Troubleshooting
+
+### Black screen on the monitor, but `http://pivista.local` opens
+
+The server is fine; the screen part (`pivista-kiosk.service`: cage + Chromium) isn't starting.
+
+**Most common cause (fixed in 0.3.1):** with no keyboard or mouse plugged in, which is normal for PiVista, the cage compositor refused to start (`libinput initialization failed, no input devices`). Update PiVista to get the fix. Over SSH:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/claude/kind-mccarthy-xql5k2/scripts/install.sh | sudo bash -s -- --keep-hostname
+```
+
+The installer restarts the screen right away, with no reboot needed. On 0.3.1 and later you can update with `sudo pivista update`.
+
+**Still black?** Run the built-in checkup. It checks the services, Chromium, the HDMI connection, groups and boot config, prints the last log lines, and saves everything to `/tmp/pivista-doctor.txt`:
+
+```bash
+sudo pivista doctor
+```
+
+Common findings:
+
+| Doctor says | Fix |
+|---|---|
+| `pivista-kiosk is inactive (enabled: disabled)` | Autostart was turned off: `sudo pivista enable && sudo pivista restart` |
+| `lightdm … is running` | The desktop login is taking the screen: `sudo systemctl disable --now lightdm && sudo pivista restart` |
+| `no monitor detected` | Use the HDMI port **next to the USB-C power port**, check the cable and the monitor's input, then `sudo pivista restart` |
+| `chromium missing` | `sudo apt install chromium-browser` (on newer OS versions: `chromium`) |
+| Log shows `Chromium crashed … safe mode` | A GPU driver problem: PiVista falls back to software rendering automatically. To force it, add `PIVISTA_CHROMIUM_FLAGS="--disable-gpu"` to `/etc/default/pivista`, then `sudo pivista restart` |
+
+The screen adapts to whatever resolution the monitor accepts (1080p is preferred; 720p and 4K screens are scaled to fit).
+
 ### Command line
 
 ```bash
@@ -181,6 +213,8 @@ pivista logs       # follow logs
 pivista restart    # restart server + TV interface
 pivista disable    # don't start on boot (server + remote keep running)
 pivista enable     # start on boot again
+pivista doctor     # diagnose a black screen / problems, saves /tmp/pivista-doctor.txt
+pivista update     # download and install the latest version from the code branch
 pivista uninstall  # remove services and boot tweaks (keeps /opt/pivista and your settings)
 ```
 
@@ -272,7 +306,7 @@ ui/shared logo + app icons
 ui/games  built-in games (common.js: input/loop helpers; one HTML file per game)
 ui/tv/    TV interface (splash, spatial navigation, system apps)
 ui/remote Phone remote (PWA)
-system/   systemd units, kiosk launcher, boot config, CLI
+system/   systemd units, kiosk launcher (start-kiosk.sh → cage → kiosk.sh → Chromium), doctor, boot config, CLI
 scripts/  install / uninstall / CI self-test
 packaging Debian package build
 ```
@@ -283,7 +317,7 @@ packaging Debian package build
 
 `.github/workflows/build.yml` runs on every push (any branch, including `claude/kind-mccarthy-xql5k2`) and on pull requests. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
 
-## Known limitations (v0.3)
+## Known limitations (v0.3.1)
 
 - Streaming services can change their web apps or block unusual user agents at any time. If one breaks, try a different user agent in `server/apps.js`.
 - Netflix/Max/Disney+ web players are made for mouse use. Use the D-pad where it works and the touchpad tab for the rest.

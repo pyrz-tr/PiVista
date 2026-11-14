@@ -3,6 +3,13 @@
    arrows, Enter (OK), Space, Escape (Back). In games the remote's d-pad sends key *down*
    and key *up* separately, so holding a button on the phone holds the key. */
 'use strict';
+
+// Fit the fixed 1920x1080 layout to whatever mode the monitor ended up in (720p TVs, 1366x768, 4K…)
+(function fitScreen() {
+  const apply = () => { document.body.style.zoom = Math.min(innerWidth / 1920, innerHeight / 1080); };
+  addEventListener('resize', apply);
+  if (document.body) apply(); else addEventListener('DOMContentLoaded', apply);
+})();
 const PV = (() => {
   const held = new Set();
   const pressHandlers = [];

@@ -2,6 +2,16 @@
 
 All code is on the `claude/kind-mccarthy-xql5k2` branch.
 
+## 0.3.1
+
+- **Fix: black screen when no keyboard/mouse is attached.** cage/wlroots refused to start without input devices; the kiosk now sets `WLR_LIBINPUT_NO_DEVICES=1` (new `system/start-kiosk.sh`, which also picks the DRM card with the connected HDMI monitor)
+- Kiosk service waits for logind/dbus and never stops retrying; Chromium falls back to a GPU-disabled safe mode after repeated crashes; clearer kiosk log messages
+- TV interface and games scale to fit any screen mode (720p, 1366×768, 4K) instead of being cut off
+- TV interface no longer stays black if it can't reach the server: it shows the home screen and a "reconnecting" notice
+- Fix: on port 80 the server didn't recognise its own TV page URL (browsers drop `:80`)
+- New `pivista doctor` (diagnostics report) and `pivista update` commands; the installer restarts the screen right away, so updates need no reboot
+- Optional `/etc/default/pivista` for extra Chromium flags (`PIVISTA_CHROMIUM_FLAGS`)
+
 ## 0.3.0
 
 - **Games** app on the home screen, with four original games playable with the phone remote:

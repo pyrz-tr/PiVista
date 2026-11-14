@@ -1,8 +1,10 @@
 [Unit]
 Description=PiVista kiosk display (cage + Chromium on tty1)
-After=systemd-user-sessions.service plymouth-quit-wait.service pivista.service
-Wants=pivista.service
+After=systemd-user-sessions.service plymouth-quit-wait.service systemd-logind.service dbus.socket pivista.service
+Wants=pivista.service systemd-logind.service dbus.socket
 Conflicts=getty@tty1.service
+# keep retrying forever instead of giving up after a few quick failures
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -18,8 +20,12 @@ StandardError=journal
 UtmpIdentifier=tty1
 UtmpMode=user
 Environment=XDG_SESSION_TYPE=wayland
-# -s: allow VT switching; cage runs one full-screen app, no desktop, no window chrome
-ExecStart=/usr/bin/cage -s -- /opt/pivista/system/kiosk.sh
+# No keyboard/mouse is the normal case for PiVista: without this wlroots/cage refuses to start
+# (black screen). start-kiosk.sh sets it too, together with the right DRM card.
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+# optional overrides, e.g. PIVISTA_CHROMIUM_FLAGS="--disable-gpu"
+EnvironmentFile=-/etc/default/pivista
+ExecStart=/opt/pivista/system/start-kiosk.sh
 Restart=always
 RestartSec=3
 

@@ -1,5 +1,7 @@
 /* Shared look for PiVista games: fixed 1920x1080 TV canvas, raspberry theme. */
-html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #07040a; color: #fbf4f8;
+html { width: 100%; height: 100%; overflow: hidden; }
+html, body { margin: 0; }
+body { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #07040a; color: #fbf4f8;
   font-family: "Inter", "Noto Sans", "DejaVu Sans", system-ui, sans-serif; cursor: none; }
 canvas.game { position: absolute; inset: 0; width: 1920px; height: 1080px; image-rendering: pixelated; }
 .hud { position: absolute; top: 32px; left: 48px; right: 48px; display: flex; justify-content: space-between; font-size: 40px; font-weight: 800; text-shadow: 0 3px 0 #0008; pointer-events: none; }
