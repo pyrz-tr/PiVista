@@ -1,0 +1,27 @@
+[Unit]
+Description=PiVista kiosk display (cage + Chromium on tty1)
+After=systemd-user-sessions.service plymouth-quit-wait.service pivista.service
+Wants=pivista.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=pivista
+PAMName=pivista-kiosk
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+Environment=XDG_SESSION_TYPE=wayland
+# -s: allow VT switching; cage runs one full-screen app, no desktop, no window chrome
+ExecStart=/usr/bin/cage -s -- /opt/pivista/system/kiosk.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

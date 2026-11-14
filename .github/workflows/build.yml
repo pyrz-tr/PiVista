@@ -1,0 +1,46 @@
+name: Build & package
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install & check
+        run: |
+          npm ci
+          npm run check
+          bash -n scripts/install.sh scripts/uninstall.sh system/kiosk.sh system/autostart.sh system/pivista-cli
+
+      - name: Build .deb
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF#refs/tags/v}"; fi
+          ./packaging/build-deb.sh "$VERSION"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pivista-deb
+          path: dist/*.deb
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
+          generate_release_notes: true

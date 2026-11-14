@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>PiVista</title>
+<link rel="stylesheet" href="tv.css">
+</head>
+<body>
+<canvas id="splash"></canvas>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo-dot"></span><span>Pi<b>Vista</b></span></div>
+    <div class="status"><span id="remote-status" class="pill">No remote</span><span id="temp" class="pill"></span><span id="clock"></span></div>
+  </header>
+
+  <section class="screen" id="home">
+    <h1 id="greeting">Welcome</h1>
+    <p class="sub">What do you want to watch?</p>
+    <h2>Streaming</h2>
+    <div class="row" id="row-stream"></div>
+    <h2>Apps</h2>
+    <div class="row" id="row-system"></div>
+  </section>
+
+  <section class="screen" id="media">
+    <h1>Media Player</h1>
+    <p class="sub" id="media-path">Videos and USB drives</p>
+    <div class="list" id="media-list"></div>
+  </section>
+
+  <section class="screen" id="browser">
+    <h1>Web Browser</h1>
+    <p class="sub">Select the address bar and type on your phone, then press OK.</p>
+    <input id="url" class="focusable urlbar" placeholder="Search or enter address" autocomplete="off" spellcheck="false">
+    <h2>Shortcuts</h2>
+    <div class="row" id="row-sites"></div>
+  </section>
+
+  <section class="screen" id="system">
+    <h1>System Info</h1>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="screen" id="pair">
+    <div class="pair-wrap">
+      <div class="pattern-card"><img id="pattern" alt="pairing pattern"></div>
+      <div class="pair-text">
+        <h1>Pair your phone</h1>
+        <ol>
+          <li>Connect your phone to the same Wi‑Fi.</li>
+          <li>Open the camera and scan the dot pattern.</li>
+          <li>Your phone becomes the remote. That's it.</li>
+        </ol>
+        <p class="sub">Or open <b id="pair-url"></b> and enter code</p>
+        <div class="code" id="pair-code">------</div>
+        <p class="sub small" id="pair-ip"></p>
+        <p class="sub small" id="pair-devices"></p>
+        <button class="btn focusable" data-action="back">Done</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="settings">
+    <h1>Settings</h1>
+    <div class="list" id="settings-list"></div>
+  </section>
+
+  <div id="screensaver"><div class="ss-clock" id="ss-clock"></div></div>
+  <div id="toasts"></div>
+</div>
+<script src="tv.js"></script>
+</body>
+</html>

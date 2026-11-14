@@ -1,0 +1,11 @@
+Package: pivista
+Version: @VERSION@
+Section: video
+Priority: optional
+Architecture: all
+Maintainer: PiVista <noreply@users.noreply.github.com>
+Depends: nodejs (>= 18), chromium-browser | chromium, libwidevinecdm0, cage, wlr-randr, mpv, ffmpeg, pipewire, pipewire-pulse, wireplumber, avahi-daemon, libnss-mdns, curl, fonts-noto-core, fonts-noto-color-emoji, zram-tools
+Description: PiVista - turn any HDMI monitor into a smart TV
+ Full-screen 10-foot TV interface for Raspberry Pi 4 with YouTube, Netflix,
+ HBO Max and Disney+, a native 4K video player, and a phone remote at
+ http://pivista.local paired by scanning an on-screen dot pattern.

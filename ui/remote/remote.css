@@ -1,0 +1,37 @@
+:root { --bg: #0b0a1a; --card: #17152e; --fg: #f3f3ff; --muted: #8f8cae; --a: #8b5cf6; --b: #22d3ee; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, sans-serif; overscroll-behavior: none; }
+body { background: radial-gradient(600px 400px at 90% -10%, #2a1d6b, transparent 70%), var(--bg); }
+.view { max-width: 440px; margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px 24px; min-height: 100%; display: flex; flex-direction: column; }
+.hidden { display: none !important; }
+.logo { font-size: 34px; font-weight: 300; display: flex; align-items: center; gap: 10px; margin: 40px 0 10px; }
+.logo.small { font-size: 22px; margin: 0; }
+.logo b { font-weight: 800; background: linear-gradient(90deg, var(--a), var(--b)); -webkit-background-clip: text; color: transparent; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(135deg, var(--a), var(--b)); box-shadow: 0 0 16px var(--a); }
+.lead { color: var(--muted); line-height: 1.5; }
+#code { font-size: 40px; letter-spacing: 12px; text-align: center; padding: 16px; border-radius: 16px; border: 0; background: var(--card); color: var(--fg); margin: 20px 0; user-select: text; }
+.primary { padding: 18px; font-size: 18px; font-weight: 700; border: 0; border-radius: 16px; color: #fff; background: linear-gradient(90deg, var(--a), #6d28d9); }
+.err { color: #fca5a5; min-height: 1.4em; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.conn { font-size: 13px; color: var(--muted); } .conn.on { color: #86efac; }
+.tabs { display: flex; background: var(--card); border-radius: 14px; padding: 4px; margin-bottom: 18px; }
+.tabs button { flex: 1; padding: 10px; border: 0; background: none; color: var(--muted); font-size: 15px; border-radius: 10px; }
+.tabs button.active { background: #2a2650; color: var(--fg); }
+button { font-family: inherit; cursor: pointer; }
+button:active { transform: scale(.94); }
+.quick { display: flex; justify-content: space-around; margin: 8px 0 18px; }
+.round { width: 76px; height: 76px; border-radius: 50%; border: 0; background: var(--card); color: var(--fg); font-size: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.round small { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.dpad { position: relative; width: 280px; height: 280px; margin: 6px auto 22px; border-radius: 50%; background: radial-gradient(circle, #221f42, var(--card)); box-shadow: inset 0 0 0 1px #ffffff12, 0 20px 50px #0008; }
+.dpad .d { position: absolute; width: 90px; height: 90px; border: 0; background: none; color: #c9c6ee; font-size: 22px; }
+.up { top: 0; left: 95px; } .down { bottom: 0; left: 95px; } .left { left: 0; top: 95px; } .right { right: 0; top: 95px; }
+.ok { position: absolute; top: 80px; left: 80px; width: 120px; height: 120px; border-radius: 50%; border: 0; font-size: 22px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--a), #4c1d95); box-shadow: 0 0 30px #8b5cf655; }
+.vol { display: flex; gap: 10px; margin-bottom: 16px; }
+.vol button { flex: 1; padding: 16px; font-size: 22px; border: 0; border-radius: 14px; background: var(--card); color: var(--fg); }
+.kbd { display: flex; gap: 10px; }
+.kbd input { flex: 1; padding: 16px; border-radius: 14px; border: 0; background: var(--card); color: var(--fg); font-size: 16px; user-select: text; }
+.kbd button { width: 64px; border: 0; border-radius: 14px; background: var(--card); color: var(--fg); font-size: 20px; }
+.touchpad { height: 52vh; border-radius: 22px; background: var(--card); display: flex; align-items: flex-end; justify-content: center; padding: 16px; color: var(--muted); font-size: 13px; touch-action: none; box-shadow: inset 0 0 0 1px #ffffff10; }
+.apps { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.app { padding: 26px 14px; border: 0; border-radius: 18px; color: #fff; font-size: 17px; font-weight: 700; text-align: left; }
+.link { margin-top: 30px; background: none; border: 0; color: var(--muted); text-decoration: underline; }

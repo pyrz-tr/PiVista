@@ -1,0 +1,19 @@
+# >>> PiVista >>>
+# --- Graphics: full KMS driver, larger CMA pool for 4K hardware video decode buffers
+dtoverlay=vc4-kms-v3d,cma-512
+max_framebuffers=2
+# --- HDMI: always drive HDMI even if the monitor is off / slow to wake at boot
+hdmi_force_hotplug=1
+disable_overscan=1
+# Uncomment for 4K at 60Hz (default 4K output is 30Hz). Raises GPU clock = more heat.
+#hdmi_enable_4kp60=1
+# --- Boot: no rainbow splash, faster boot
+disable_splash=1
+boot_delay=0
+# --- Anti-overheat: firmware throttles below the 85C default; PiVista throttles earlier in software (80C)
+temp_limit=82
+# Passive cooling / no heatsink? Uncomment to drop the 1.8GHz boost on newer Pi 4 boards.
+#arm_boost=0
+# Got a 5V fan on GPIO14? Uncomment to switch it on at 60C.
+#dtoverlay=gpio-fan,gpiopin=14,temp=60000
+# <<< PiVista <<<

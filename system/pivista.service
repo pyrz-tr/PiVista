@@ -1,0 +1,17 @@
+[Unit]
+Description=PiVista server (TV interface + phone remote)
+After=network-online.target avahi-daemon.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pivista
+ExecStart=/usr/bin/node /opt/pivista/server/index.js
+Environment=NODE_ENV=production PIVISTA_USER=pivista PIVISTA_DATA=/var/lib/pivista
+Restart=always
+RestartSec=2
+Nice=-2
+MemoryMax=300M
+
+[Install]
+WantedBy=multi-user.target
