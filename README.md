@@ -62,12 +62,14 @@ Back always returns to the Games list, and best scores are saved on the Pi. Game
 
 ## Install
 
+> **Branch:** all PiVista code is on the **`claude/kind-mccarthy-xql5k2`** branch (it's also the repository's default branch). There is no `main` branch, so every command below names the branch explicitly.
+
 1. Flash **Raspberry Pi OS (64-bit)** with Raspberry Pi Imager. In the Imager settings, set Wi-Fi, a user and SSH.
 2. Boot the Pi and SSH in (or use a keyboard just this once).
 3. Run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/claude/kind-mccarthy-xql5k2/scripts/install.sh | sudo bash
 ```
 
 4. Reboot:
@@ -78,15 +80,25 @@ sudo reboot
 
 On first boot you'll see the PiVista intro and then the **Pair your phone** screen. Open your phone camera, scan the dot pattern, and you're in.
 
+The installer downloads the branch above. To install from a different branch, pass `PIVISTA_BRANCH` after `sudo`, so the variable reaches the script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/<branch>/scripts/install.sh | sudo PIVISTA_BRANCH=<branch> bash
+```
+
 ### Other ways to install
 
 **From a checkout:**
 
 ```bash
-git clone https://github.com/pyrz-tr/PiVista.git && cd PiVista && sudo ./scripts/install.sh
+git clone -b claude/kind-mccarthy-xql5k2 https://github.com/pyrz-tr/PiVista.git && cd PiVista && sudo ./scripts/install.sh
 ```
 
-**From the .deb** (built by GitHub Actions; download it from *Releases* or the workflow artifacts):
+**From the .deb:** every push to `claude/kind-mccarthy-xql5k2` builds an installable package. Open the repository's **Actions** tab, select the latest **Build & package** run on that branch, and download the **pivista-deb** artifact (a zip containing the `.deb`). GitHub Releases are created only when a version tag such as `v0.3.0` is pushed. Then on the Pi:
+
+```bash
+unzip pivista-deb.zip
+```
 
 ```bash
 sudo apt install ./pivista_0.3.0_all.deb
@@ -141,6 +153,26 @@ Open **Add App** on the TV, or **Apps → + Add app** on the phone:
 Pick a TV zoom (100/125/150%) so the app is readable from the couch. Installed apps appear in **My Apps** on the home screen. Remove them from the same screens.
 Uploaded apps run from `http://localhost/userapps/…`, a separate browser origin from the TV interface, so an app can't control PiVista.
 
+## Updating
+
+Run the same install command again. It replaces the app in `/opt/pivista`, keeps your settings, paired phones and installed apps (`/var/lib/pivista`), and restarts the server:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/claude/kind-mccarthy-xql5k2/scripts/install.sh | sudo bash
+```
+
+From a checkout instead:
+
+```bash
+cd PiVista && git pull origin claude/kind-mccarthy-xql5k2 && sudo ./scripts/install.sh
+```
+
+Then restart the TV interface (or reboot):
+
+```bash
+pivista restart
+```
+
 ### Command line
 
 ```bash
@@ -149,7 +181,13 @@ pivista logs       # follow logs
 pivista restart    # restart server + TV interface
 pivista disable    # don't start on boot (server + remote keep running)
 pivista enable     # start on boot again
-pivista uninstall  # remove services and boot tweaks (add --purge via scripts/uninstall.sh to delete everything)
+pivista uninstall  # remove services and boot tweaks (keeps /opt/pivista and your settings)
+```
+
+To also delete the app and all settings, paired phones and installed apps:
+
+```bash
+sudo /opt/pivista/scripts/uninstall.sh --purge
 ```
 
 ---
@@ -163,6 +201,7 @@ pivista uninstall  # remove services and boot tweaks (add --purge via scripts/un
   (WebSocket)            • serves TV interface  /tv/                   │
                          • pairing (dot pattern = styled QR code)      │
                          • thermal guard, volume, HDMI mode, power     │
+                         • screen mirror, games, installed apps        │
                          │  Chrome DevTools Protocol (localhost:9222)  │
                          ▼                                             │
                 pivista-kiosk.service: cage (Wayland kiosk) ─▶ Chromium full screen ─▶ HDMI
@@ -207,7 +246,14 @@ pivista uninstall  # remove services and boot tweaks (add --purge via scripts/un
 
 ## Development
 
-Run it on any computer (the Chromium-control features simply don't do anything without a kiosk browser):
+Work happens on the `claude/kind-mccarthy-xql5k2` branch:
+
+```bash
+git clone -b claude/kind-mccarthy-xql5k2 https://github.com/pyrz-tr/PiVista.git && cd PiVista
+```
+
+
+Then run it on any computer (the Chromium-control features simply don't do anything without a kiosk browser):
 
 ```bash
 npm install
@@ -235,7 +281,7 @@ packaging Debian package build
 
 ## CI / packaging
 
-`.github/workflows/build.yml` runs on every push. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
+`.github/workflows/build.yml` runs on every push (any branch, including `claude/kind-mccarthy-xql5k2`) and on pull requests. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
 
 ## Known limitations (v0.3)
 
@@ -244,6 +290,10 @@ packaging Debian package build
 - No HDMI-CEC (TV remote) support yet.
 - The phone keyboard pops up for real text fields. YouTube's TV layout uses its own on-screen keyboard, so use the D-pad there or open YouTube search in the browser.
 - iOS won't let a web page open the keyboard by itself: the keyboard sheet appears, and you tap the field once.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

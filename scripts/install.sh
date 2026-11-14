@@ -1,19 +1,23 @@
 #!/bin/bash
 # PiVista installer for Raspberry Pi 4 on Raspberry Pi OS (Bookworm or newer, 64-bit).
 #
-#   curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/main/scripts/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/pyrz-tr/PiVista/claude/kind-mccarthy-xql5k2/scripts/install.sh | sudo bash
 #   or, from a checkout:  sudo ./scripts/install.sh
 #
 # Options:
 #   --keep-hostname   don't rename the Pi to "pivista" (remote URL becomes http://<hostname>.local)
 #   --no-tuning       skip performance tuning (zram, journald, services, Wi-Fi power save)
 #   --from-deb        used by the .deb package (files already in /opt/pivista, deps installed by apt)
+#
+# Environment:
+#   PIVISTA_BRANCH    git branch to download when not run from a checkout (default below)
 set -euo pipefail
 
 APP_DIR=/opt/pivista
 DATA_DIR=/var/lib/pivista
 KIOSK_USER=pivista
 REPO=https://github.com/pyrz-tr/PiVista.git
+BRANCH="${PIVISTA_BRANCH:-claude/kind-mccarthy-xql5k2}"   # the code lives on this branch (there is no main branch)
 KEEP_HOSTNAME=0; TUNING=1; FROM_DEB=0
 for a in "$@"; do case "$a" in
   --keep-hostname) KEEP_HOSTNAME=1 ;; --no-tuning) TUNING=0 ;; --from-deb) FROM_DEB=1 ;;
@@ -41,8 +45,8 @@ fi
 if [ "$FROM_DEB" = 0 ]; then
   SRC="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." 2>/dev/null && pwd || true)"
   if [ -z "$SRC" ] || [ ! -f "$SRC/server/index.js" ]; then
-    say "Downloading PiVista…"
-    SRC="$(mktemp -d)"; git clone --depth 1 "$REPO" "$SRC"
+    say "Downloading PiVista ($BRANCH)…"
+    SRC="$(mktemp -d)"; git clone --depth 1 -b "$BRANCH" "$REPO" "$SRC"
   fi
   say "Copying app to $APP_DIR"
   mkdir -p "$APP_DIR"
