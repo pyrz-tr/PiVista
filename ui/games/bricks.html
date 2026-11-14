@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Brick Blaster</title><link rel="stylesheet" href="common.css"></head>
+<body>
+<canvas class="game" id="c" width="1920" height="1080"></canvas>
+<div class="hud"><div id="score">Score 0</div><div id="lives">♥♥♥</div><div id="best">Best 0</div></div>
+<div class="overlay" id="ov"><h1>Brick Blaster</h1><p>Clear every brick. Catch the ball!</p><p class="big" id="ov-msg"></p>
+  <p class="keys">◀ ▶ hold to move · <b>OK</b> launch · Back exit</p></div>
+<script src="common.js"></script>
+<script>
+'use strict';
+const g = PV.$('#c').getContext('2d');
+const W = 1920, H = 1080, PW = 260, PH = 26, R = 14;
+const COLORS = ['#e0115f', '#ff4d8d', '#f97316', '#facc15', '#4ade80', '#22d3ee', '#a855f7'];
+let paddle, ball, bricks, score, lives, level, state = 'ready', stuck = true;
+function buildLevel() {
+  bricks = [];
+  const cols = 12, rows = 5 + Math.min(level, 2), bw = 136, bh = 44, gap = 10, ox = (W - cols * (bw + gap) + gap) / 2;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (level % 2 === 0 && (r + c) % 5 === 0) continue;
+    bricks.push({ x: ox + c * (bw + gap), y: 150 + r * (bh + gap), w: bw, h: bh, hp: r < level ? 2 : 1, color: COLORS[r % COLORS.length] });
+  }
+}
+function newGame() { score = 0; lives = 3; level = 1; buildLevel(); serve(); state = 'play'; PV.$('#ov').classList.add('hidden'); }
+function serve() { paddle = { x: W / 2 - PW / 2, y: H - 80 }; ball = { x: W / 2, y: H - 80 - R, vx: 0, vy: 0 }; stuck = true; }
+PV.onPress((k) => {
+  if (state !== 'play') { if (k === 'ok') newGame(); return; }
+  if (k === 'ok' && stuck) { stuck = false; const sp = 760 + level * 60; ball.vx = sp * 0.45; ball.vy = -sp * 0.9; }
+});
+function update(dt) {
+  if (state !== 'play') return;
+  const v = 1500 * dt;
+  if (PV.held('left')) paddle.x -= v; if (PV.held('right')) paddle.x += v;
+  paddle.x = Math.max(0, Math.min(W - PW, paddle.x));
+  if (stuck) { ball.x = paddle.x + PW / 2; ball.y = paddle.y - R; return; }
+  ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+  if (ball.x < R || ball.x > W - R) { ball.vx *= -1; ball.x = Math.max(R, Math.min(W - R, ball.x)); }
+  if (ball.y < 110 + R) { ball.vy = Math.abs(ball.vy); }
+  if (ball.vy > 0 && ball.y + R >= paddle.y && ball.y + R <= paddle.y + PH + 20 && ball.x > paddle.x - R && ball.x < paddle.x + PW + R) {
+    const hit = (ball.x - (paddle.x + PW / 2)) / (PW / 2); const sp = Math.hypot(ball.vx, ball.vy) * 1.01;
+    ball.vx = sp * Math.sin(hit * 1.05); ball.vy = -Math.abs(sp * Math.cos(hit * 1.05)); ball.y = paddle.y - R;
+  }
+  for (const b of bricks) {
+    if (b.hp <= 0) continue;
+    if (ball.x + R > b.x && ball.x - R < b.x + b.w && ball.y + R > b.y && ball.y - R < b.y + b.h) {
+      const ox = Math.min(ball.x + R - b.x, b.x + b.w - (ball.x - R)), oy = Math.min(ball.y + R - b.y, b.y + b.h - (ball.y - R));
+      if (ox < oy) ball.vx *= -1; else ball.vy *= -1;
+      b.hp--; score += 10 * level; break;
+    }
+  }
+  bricks = bricks.filter((b) => b.hp > 0);
+  if (!bricks.length) { level++; buildLevel(); serve(); }
+  if (ball.y > H + 40) {
+    lives--;
+    if (lives <= 0) { state = 'over'; PV.best('bricks', score); PV.$('#ov-msg').textContent = `Game over · ${score} points`; PV.$('#ov').classList.remove('hidden'); }
+    else serve();
+  }
+}
+function render() {
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#1a0b22'); bg.addColorStop(1, '#07040a');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (!bricks) return;
+  for (const b of bricks) {
+    g.fillStyle = b.color; g.globalAlpha = b.hp > 1 ? 1 : 0.85; g.beginPath(); g.roundRect(b.x, b.y, b.w, b.h, 10); g.fill();
+    if (b.hp > 1) { g.strokeStyle = '#fff'; g.lineWidth = 4; g.stroke(); }
+    g.globalAlpha = 1; g.fillStyle = '#ffffff33'; g.fillRect(b.x + 8, b.y + 6, b.w - 16, 8);
+  }
+  const pg = g.createLinearGradient(paddle.x, 0, paddle.x + PW, 0); pg.addColorStop(0, '#ff4d8d'); pg.addColorStop(1, '#a855f7');
+  g.fillStyle = pg; g.beginPath(); g.roundRect(paddle.x, paddle.y, PW, PH, 13); g.fill();
+  g.shadowColor = '#fff'; g.shadowBlur = 20; g.fillStyle = '#fff'; g.beginPath(); g.arc(ball.x, ball.y, R, 0, 7); g.fill(); g.shadowBlur = 0;
+  PV.$('#score').textContent = `Score ${score}  ·  Level ${level}`; PV.$('#lives').textContent = '♥'.repeat(Math.max(0, lives));
+  PV.$('#best').textContent = `Best ${PV.best('bricks')}`;
+}
+level = 1; buildLevel(); serve(); score = 0; lives = 3;
+PV.$('#best').textContent = `Best ${PV.best('bricks')}`;
+PV.loop(update, render);
+</script>
+</body>
+</html>

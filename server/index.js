@@ -34,7 +34,8 @@ if (!cfg.state.bookmarks) {
 }
 if (!cfg.state.browserHistory) cfg.state.browserHistory = [];
 
-let currentApp = null; // app object when a web app is in front, null for our TV UI
+let currentApp = null; // app object when a web app is in front, null for our TV UI / games
+let lastUrl = '';      // last top-level URL in the kiosk browser
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 const allApps = () => [...builtins, ...userapps.asApps(PORT)];
@@ -232,7 +233,7 @@ async function back() {
 
 function stateNow() {
   return { app: currentApp && currentApp.id, appName: currentApp && currentApp.name, browser: !!(currentApp && currentApp.browser),
-    playing: player.active, now: player.now };
+    playing: player.active, now: player.now, game: !currentApp && /\/games\/[a-z]+\.html/.test(lastUrl) };
 }
 
 const handlers = {
@@ -242,6 +243,8 @@ const handlers = {
     if (player.active) return player.key(k);
     return cdp.key(k);
   },
+  keydown: ({ k }) => (player.active ? null : cdp.keyDown(k)),
+  keyup: ({ k }) => (player.active ? null : cdp.keyUp(k)),
   text: ({ v }) => cdp.text(String(v || '')),
   setText: ({ v }) => cdp.setFieldText(String(v || '')),
   mouse: ({ dx, dy }) => moveCursor(Number(dx) || 0, Number(dy) || 0),
@@ -333,6 +336,7 @@ wss.on('connection', (ws, req) => {
 
 // ---------- wiring ----------
 cdp.on('navigate', (u) => {
+  lastUrl = u;
   // a navigation can move the page to a new renderer process: restart the mirror stream
   if (mirror.running) { mirror.running = false; cdp.stopScreencast().then(() => mirrorTick()).catch(() => {}); }
   if (u.startsWith(TV_URL)) { currentApp = null; cdp.resetApp().catch(() => {}); }

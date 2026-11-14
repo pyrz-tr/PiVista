@@ -14,9 +14,39 @@
 - 🧩 **Install your own apps:** any website or PWA by address, a single `.html` file, or a `.zip` web app
 - 🎬 Media Player (mpv, hardware decode): local files, USB drives and stream links, with **4K output** for 4K files, plus now-playing controls on the phone
 - 🌐 Web Browser with bookmarks, history, and back/forward/reload and an address bar on the phone
+- 🎮 **Games**: Raspberry Rally (kart racer), Berry Snake, Brick Blaster, Berry Merge, with a hold-to-steer game mode on the phone
 - ⚙️ System apps: Settings, System Info (temperature, throttling, power), Pair Remote, Add App
 - 🚀 Starts on boot (you can turn that off in Settings)
 - 🌡️ Overheat protection, SD-card-friendly tuning, HDMI tuned to work every time
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Opening animation](docs/screenshots/tv-02-splash-b.jpg) Opening animation | ![Home](docs/screenshots/tv-05-home.jpg) Home screen |
+| ![Pairing](docs/screenshots/tv-03-pair.jpg) Pairing (dot pattern + direct-IP fallback) | ![Games](docs/screenshots/tv-06-games.jpg) Games |
+| ![Raspberry Rally](docs/screenshots/tv-22-rally-race-a.jpg) Raspberry Rally | ![Sunset Dunes](docs/screenshots/tv-26-rally-dunes.jpg) Raspberry Rally: Sunset Dunes |
+| ![Media](docs/screenshots/tv-07-media.jpg) Media Player | ![Settings](docs/screenshots/tv-11-settings.jpg) Settings |
+
+| Phone remote | | | |
+|---|---|---|---|
+| ![](docs/screenshots/phone-02-remote.jpg) | ![](docs/screenshots/phone-06-screen-mirror.jpg) | ![](docs/screenshots/phone-05-keyboard.jpg) | ![](docs/screenshots/phone-10-game-mode.jpg) |
+| Remote | Screen mirror | Pop-up keyboard | Game mode |
+
+More in [`docs/screenshots`](docs/screenshots).
+
+## Games
+
+**Games** on the home screen has four built-in games, all original and all playable with the phone remote. In a game, the remote switches to **🎮 Game mode**: holding a button on the phone holds the key on the TV, so you can steer.
+
+| Game | What it is | Controls |
+|---|---|---|
+| **Raspberry Rally** | Pseudo-3D kart racer: 4 fruit drivers with different handling, 2 tracks (Berry Valley, Sunset Dunes), 3 laps against AI rivals, boost pads, berry pickups (small top-speed bonus) and turbo item boxes | Auto-accelerates · ◀ ▶ steer · ▼ brake · OK turbo |
+| **Berry Snake** | Classic snake that speeds up as it grows | Arrows |
+| **Brick Blaster** | Paddle-and-ball brick breaker with levels | Hold ◀ ▶ · OK launch |
+| **Berry Merge** | Slide-and-merge number puzzle (reach 2048) | Arrows · ⏯ restart |
+
+Back always returns to the Games list, and best scores are saved on the Pi. Games render on a canvas with a fixed timestep, so they run at the same speed on a busy Pi.
 
 ---
 
@@ -59,7 +89,7 @@ git clone https://github.com/pyrz-tr/PiVista.git && cd PiVista && sudo ./scripts
 **From the .deb** (built by GitHub Actions; download it from *Releases* or the workflow artifacts):
 
 ```bash
-sudo apt install ./pivista_0.2.0_all.deb
+sudo apt install ./pivista_0.3.0_all.deb
 ```
 
 Installer options: `--keep-hostname` (don't rename the Pi to `pivista`), `--no-tuning` (skip system tuning).
@@ -193,6 +223,7 @@ server/   Node.js server: index.js (HTTP/WS + routing, mirror), cdp.js (browser 
           player.js (mpv), system.js (hardware), thermal.js, apps.js (app catalog), config.js,
           adblock.js (YouTube ad blocker), userapps.js (installed apps)
 ui/shared logo + app icons
+ui/games  built-in games (common.js: input/loop helpers; one HTML file per game)
 ui/tv/    TV interface (splash, spatial navigation, system apps)
 ui/remote Phone remote (PWA)
 system/   systemd units, kiosk launcher, boot config, CLI
@@ -204,9 +235,9 @@ packaging Debian package build
 
 ## CI / packaging
 
-`.github/workflows/build.yml` runs on every push. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.2.0` also publishes a GitHub Release with the `.deb`.
+`.github/workflows/build.yml` runs on every push. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
 
-## Known limitations (v0.2)
+## Known limitations (v0.3)
 
 - Streaming services can change their web apps or block unusual user agents at any time. If one breaks, try a different user agent in `server/apps.js`.
 - Netflix/Max/Disney+ web players are made for mouse use. Use the D-pad where it works and the touchpad tab for the rest.

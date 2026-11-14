@@ -20,6 +20,7 @@ module.exports = [
   // Built-in system apps (screens of the TV UI itself)
   { id: 'media', name: 'Media Player', type: 'system', color: '#0f9d8a', icon: '/shared/icons/media.svg' },
   { id: 'browser', name: 'Web Browser', type: 'system', color: '#2d6cdf', icon: '/shared/icons/browser.svg' },
+  { id: 'games', name: 'Games', type: 'system', color: '#ea580c', icon: '/shared/icons/games.svg' },
   { id: 'addapp', name: 'Add App', type: 'system', color: '#374151', icon: '/shared/icons/add.svg' },
   { id: 'pair', name: 'Pair Remote', type: 'system', color: '#c0135a', icon: '/shared/icons/pair.svg' },
   { id: 'system', name: 'System Info', type: 'system', color: '#4b5563', icon: '/shared/icons/system.svg' },

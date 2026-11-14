@@ -1,6 +1,6 @@
 {
   "name": "pivista",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "PiVista - turn any HDMI monitor into a smart TV with a Raspberry Pi 4 and your phone as the remote.",
   "main": "server/index.js",
   "scripts": {

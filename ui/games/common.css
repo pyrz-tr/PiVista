@@ -1,0 +1,14 @@
+/* Shared look for PiVista games: fixed 1920x1080 TV canvas, raspberry theme. */
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #07040a; color: #fbf4f8;
+  font-family: "Inter", "Noto Sans", "DejaVu Sans", system-ui, sans-serif; cursor: none; }
+canvas.game { position: absolute; inset: 0; width: 1920px; height: 1080px; image-rendering: pixelated; }
+.hud { position: absolute; top: 32px; left: 48px; right: 48px; display: flex; justify-content: space-between; font-size: 40px; font-weight: 800; text-shadow: 0 3px 0 #0008; pointer-events: none; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(circle at 50% 40%, #2a0b24cc, #07040af0); text-align: center; }
+.overlay.hidden { display: none; }
+.overlay h1 { font-size: 110px; margin: 0; font-weight: 900; letter-spacing: -2px;
+  background: linear-gradient(90deg, #ff4d8d, #a855f7); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.overlay p { font-size: 34px; margin: 0; color: #e8d5e3; }
+.overlay .keys { font-size: 26px; color: #b9a3b4; margin-top: 30px; line-height: 1.6; }
+.overlay .big { font-size: 64px; font-weight: 800; color: #fff; }
+.pill { display: inline-block; padding: 6px 18px; border-radius: 999px; background: #ffffff22; font-size: 26px; margin: 0 4px; }

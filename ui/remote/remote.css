@@ -77,3 +77,4 @@ button:active { transform: scale(.95); }
 #add-go { width: 100%; }
 .row-app { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid #ffffff12; font-size: 15px; }
 .row-app button { border: 0; background: none; color: #fca5a5; font-size: 14px; }
+.game-pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #ea580c; color: #fff; }

@@ -226,6 +226,29 @@ $('#url').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.value.trim()) { rpc.call('launch', { id: 'url', url: e.target.value.trim() }); e.target.value = ''; }
 });
 
+// ---------- Games (each game is a page under /games/, Back returns here)
+const GAMES = [
+  { id: 'rally', name: 'Raspberry Rally', desc: 'Kart racing on two tracks against three fruity rivals. Grab turbos, hit boost pads, win the cup.', best: 'rally-0-time-inv' },
+  { id: 'snake', name: 'Berry Snake', desc: 'Eat the raspberries and grow. The snake speeds up as you go.', best: 'snake' },
+  { id: 'bricks', name: 'Brick Blaster', desc: 'Bounce the ball and smash every brick. Levels get tougher.', best: 'bricks' },
+  { id: 'merge', name: 'Berry Merge', desc: 'Slide the tiles and merge matching numbers. Reach 2048!', best: 'merge' },
+];
+screens.games = {
+  enter() {
+    const box = $('#game-list'); box.innerHTML = '';
+    for (const g of GAMES) {
+      const c = el('div', 'game-card focusable'); c.tabIndex = 0;
+      const img = el('img'); img.src = `/games/covers/${g.id}.svg`; img.alt = '';
+      const t = el('div'); t.append(el('h3', '', g.name), el('p', '', g.desc));
+      let best = 0; try { best = Number(localStorage.getItem('pv-best-' + g.best)) || 0; } catch (_) {}
+      if (best) t.append(el('div', 'best', g.id === 'rally' ? `🏆 Best time ${(1e6 / best).toFixed(1)} s` : `🏆 Best ${best}`));
+      c.append(img, t);
+      c.onclick = () => { location.href = `/games/${g.id}.html`; };
+      box.append(c);
+    }
+  },
+};
+
 // ---------- Add App
 let zoom = 1.25;
 screens.addapp = {

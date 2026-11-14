@@ -90,3 +90,11 @@ h2 { font-size: 28px; margin: 34px 0 18px; color: var(--muted); font-weight: 600
 #screensaver { position: fixed; inset: 0; background: #000; z-index: 45; display: none; }
 #screensaver.on { display: block; }
 .ss-clock { position: absolute; font-size: 140px; font-weight: 200; color: #ffffff55; transition: left 2s, top 2s; }
+
+/* ---------- games ---------- */
+.games { display: grid; grid-template-columns: repeat(2, 1fr); gap: 36px; margin-top: 40px; }
+.game-card { display: flex; gap: 28px; align-items: center; background: #ffffff0d; border-radius: 26px; padding: 22px; outline: none; transition: transform .18s, box-shadow .18s, background .18s; }
+.game-card img { width: 384px; height: 216px; border-radius: 18px; flex: none; object-fit: cover; }
+.game-card h3 { font-size: 40px; margin: 0 0 8px; } .game-card p { font-size: 24px; color: var(--muted); margin: 0 0 12px; line-height: 1.4; }
+.game-card .best { font-size: 22px; color: #fcd34d; }
+.game-card:focus { transform: scale(1.04); background: #ffffff1a; }

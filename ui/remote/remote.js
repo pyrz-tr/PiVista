@@ -115,6 +115,8 @@ const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s
 let seeking = false;
 function setState(s) {
   if (!s) return;
+  gameMode = !!s.game;
+  $('#game-pill').classList.toggle('hidden', !gameMode);
   $('#ctx-media').classList.toggle('hidden', !s.playing);
   $('#ctx-browser').classList.toggle('hidden', !s.browser || s.playing);
   if (s.playing && s.now) {
@@ -133,17 +135,25 @@ $('#br-url').addEventListener('keydown', (e) => {
 });
 $('#br-star').onclick = async () => { buzz(); await call('addBookmark'); $('#br-star').textContent = '★'; setTimeout(() => { $('#br-star').textContent = '☆'; }, 1500); };
 
-// ---------- buttons (with hold-to-repeat for the d-pad) ----------
+// ---------- buttons ----------
+// Normal mode: tap = key press, hold an arrow = auto-repeat.
+// Game mode (a PiVista game is on screen): press = key down, release = key up,
+// so holding a direction on the phone keeps steering in Raspberry Rally.
+let gameMode = false;
+const HOLDABLE = ['up', 'down', 'left', 'right', 'ok'];
 $$('[data-key]').forEach((b) => {
-  let timer = null, rep = null;
-  const fire = () => { buzz(); send({ t: 'key', k: b.dataset.key }); };
-  const repeatable = ['up', 'down', 'left', 'right'].includes(b.dataset.key);
+  let timer = null, rep = null, down = null;
+  const k = b.dataset.key;
+  const fire = () => { buzz(); send({ t: 'key', k }); };
   b.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); fire();
-    if (repeatable) timer = setTimeout(() => { rep = setInterval(fire, 110); }, 450);
+    e.preventDefault();
+    try { b.setPointerCapture(e.pointerId); } catch (_) {}
+    if (gameMode && HOLDABLE.includes(k)) { buzz(8); down = k; send({ t: 'keydown', k }); return; }
+    fire();
+    if (['up', 'down', 'left', 'right'].includes(k)) timer = setTimeout(() => { rep = setInterval(fire, 110); }, 450);
   });
-  const end = () => { clearTimeout(timer); clearInterval(rep); };
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, end));
+  const end = () => { clearTimeout(timer); clearInterval(rep); if (down) { send({ t: 'keyup', k: down }); down = null; } };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, end));
 });
 $$('[data-vol]').forEach((b) => b.addEventListener('click', () => { buzz(); send({ t: 'volume', v: b.dataset.vol }); }));
 

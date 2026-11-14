@@ -134,6 +134,18 @@ class CDP extends EventEmitter {
     await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
   }
 
+  async keyDown(name) {
+    const k = KEYS[name]; if (!k) return;
+    const [key, code, text, codeName] = k;
+    await this.send('Input.dispatchKeyEvent', { type: text ? 'keyDown' : 'rawKeyDown', key, code: codeName || key,
+      windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, ...(text ? { text } : {}) });
+  }
+  async keyUp(name) {
+    const k = KEYS[name]; if (!k) return;
+    const [key, code, , codeName] = k;
+    await this.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: codeName || key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
+  }
+
   async text(str) { await this.send('Input.insertText', { text: str }); }
 
   // Replace the focused field's content (used by the phone keyboard sheet).
