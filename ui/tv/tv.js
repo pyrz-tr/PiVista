@@ -2,6 +2,7 @@
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
 // ---------------------------------------------------------------- server link
 const rpc = (() => {
@@ -10,18 +11,18 @@ const rpc = (() => {
     ws = new WebSocket(`ws://${location.host}/ws`);
     ws.onmessage = (e) => {
       const m = JSON.parse(e.data);
-      if (m.t === 'res' && pending.has(m.id)) { pending.get(m.id)(m.data); pending.delete(m.id); return; }
+      if (m.t === 'res' && pending.has(m.id)) { pending.get(m.id)(m.error ? { error: m.error } : m.data); pending.delete(m.id); return; }
       listeners.forEach((fn) => fn(m));
     };
     ws.onclose = () => setTimeout(open, 1500);
   }
   open();
   return {
-    call(t, args = {}) {
+    call(t, args = {}, timeout = 8000) {
       return new Promise((res) => {
-        if (!ws || ws.readyState !== 1) return setTimeout(() => res(rpc.call(t, args)), 300);
+        if (!ws || ws.readyState !== 1) return setTimeout(() => res(rpc.call(t, args, timeout)), 300);
         const id = ++seq; pending.set(id, res); ws.send(JSON.stringify({ t, id, ...args }));
-        setTimeout(() => { if (pending.delete(id)) res(null); }, 8000);
+        setTimeout(() => { if (pending.delete(id)) res(null); }, timeout);
       });
     },
     on(fn) { listeners.push(fn); },
@@ -29,47 +30,55 @@ const rpc = (() => {
 })();
 
 let settings = {};
+let apps = [];
 
 // ---------------------------------------------------------------- splash
-function splash() {
+// Glowing dots fly in and assemble the raspberry logo + wordmark, then a light sweep.
+async function splash() {
   const cv = $('#splash');
-  if (sessionStorage.getItem('pv-splash') || location.hash.length > 1) { cv.remove(); return Promise.resolve(); }
+  if (sessionStorage.getItem('pv-splash') || location.hash.length > 1) { cv.remove(); return; }
   sessionStorage.setItem('pv-splash', '1');
   const W = cv.width = 1920, H = cv.height = 1080; const ctx = cv.getContext('2d');
 
-  // sample the logo text into target points
   const off = document.createElement('canvas'); off.width = W; off.height = H;
   const o = off.getContext('2d');
-  o.fillStyle = '#fff'; o.font = '800 260px Inter, "DejaVu Sans", sans-serif'; o.textAlign = 'center'; o.textBaseline = 'middle';
-  o.fillText('PiVista', W / 2, H / 2 - 20);
-  const img = o.getImageData(0, 0, W, H).data; const pts = []; const step = 9;
-  for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) if (img[(y * W + x) * 4 + 3] > 128) pts.push([x, y]);
+  const logo = new Image(); logo.src = '/shared/logo.svg';
+  try { await logo.decode(); } catch (_) {}
+  o.font = '800 230px Inter, "DejaVu Sans", sans-serif'; o.textBaseline = 'middle';
+  const tw = o.measureText('PiVista').width; const ls = 300; const total = ls + 30 + tw; const x0 = (W - total) / 2;
+  if (logo.complete && logo.naturalWidth) o.drawImage(logo, x0, H / 2 - 175, ls, ls);
+  const grad = o.createLinearGradient(x0 + ls, 0, x0 + total, 0);
+  grad.addColorStop(0, '#ff4d8d'); grad.addColorStop(1, '#a855f7');
+  o.fillStyle = grad; o.fillText('PiVista', x0 + ls + 30, H / 2 - 10);
 
-  // pre-rendered glowing dot sprites, tinted violet -> cyan across the logo (cheap on the Pi GPU)
-  const TINTS = 12;
-  const sprites = Array.from({ length: TINTS }, (_, i) => {
-    const f = i / (TINTS - 1); const r = Math.round(139 + (34 - 139) * f), gg = Math.round(92 + (211 - 92) * f), bb = Math.round(246 + (238 - 246) * f);
+  const img = o.getImageData(0, 0, W, H).data; const pts = []; const step = 8;
+  for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) {
+    const i = (y * W + x) * 4;
+    if (img[i + 3] > 140) pts.push([x, y, img[i], img[i + 1], img[i + 2]]);
+  }
+  // one pre-rendered glow sprite per (quantised) colour: cheap to draw on the Pi GPU
+  const sprites = new Map();
+  const sprite = (r, g, b) => {
+    const k = `${r >> 4},${g >> 4},${b >> 4}`;
+    if (sprites.has(k)) return sprites.get(k);
     const sp = document.createElement('canvas'); sp.width = sp.height = 24; const s = sp.getContext('2d');
-    const g = s.createRadialGradient(12, 12, 0, 12, 12, 12);
-    g.addColorStop(0, '#fff'); g.addColorStop(.3, `rgb(${r},${gg},${bb})`); g.addColorStop(1, `rgba(${r},${gg},${bb},0)`);
-    s.fillStyle = g; s.fillRect(0, 0, 24, 24); return sp;
-  });
-  const minX = Math.min(...pts.map((q) => q[0])), maxX = Math.max(...pts.map((q) => q[0]));
-
-  const P = pts.map(([tx, ty], i) => {
-    const a = Math.random() * Math.PI * 2, r = 700 + Math.random() * 600;
-    return { tx, ty, sx: W / 2 + Math.cos(a) * r, sy: H / 2 + Math.sin(a) * r, d: Math.random() * 0.35,
-      sp: sprites[Math.round(((tx - minX) / (maxX - minX || 1)) * (TINTS - 1))] };
+    const gr = s.createRadialGradient(12, 12, 0, 12, 12, 12);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(.3, `rgb(${r},${g},${b})`); gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    s.fillStyle = gr; s.fillRect(0, 0, 24, 24); sprites.set(k, sp); return sp;
+  };
+  const P = pts.map(([tx, ty, r, g, b]) => {
+    const a = Math.random() * Math.PI * 2, rad = 700 + Math.random() * 600;
+    return { tx, ty, sx: W / 2 + Math.cos(a) * rad, sy: H / 2 + Math.sin(a) * rad, d: Math.random() * 0.35, sp: sprite(r, g, b) };
   });
   const ease = (t) => 1 - Math.pow(1 - t, 4);
   const T0 = performance.now(), DUR = 3600;
-  return new Promise((done) => {
+  await new Promise((done) => {
     function frame(now) {
       const t = (now - T0) / DUR;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = 'rgba(4,4,11,0.35)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(7,4,10,0.35)'; ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
-      const sweep = (t - 0.62) * 2.6 * W; // light sweep across the logo
+      const sweep = (t - 0.62) * 2.6 * W;
       for (const p of P) {
         const k = ease(Math.min(1, Math.max(0, (t * 1.6 - p.d) / 0.9)));
         const x = p.sx + (p.tx - p.sx) * k, y = p.sy + (p.ty - p.sy) * k;
@@ -81,9 +90,10 @@ function splash() {
       ctx.globalAlpha = 1;
       if (t > 0.7) {
         ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = `rgba(200,200,255,${Math.min(1, (t - 0.7) * 4) * 0.8})`;
+        ctx.fillStyle = `rgba(240,210,230,${Math.min(1, (t - 0.7) * 4) * 0.75})`;
         ctx.font = '400 34px Inter, "DejaVu Sans", sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('your screen, smarter', W / 2, H / 2 + 170);
+        ctx.fillText('your screen, smarter', W / 2, H / 2 + 200);
+        ctx.textAlign = 'start';
       }
       if (t < 1) requestAnimationFrame(frame);
       else { cv.classList.add('done'); setTimeout(() => { cv.remove(); done(); }, 800); }
@@ -95,26 +105,25 @@ function splash() {
 // ---------------------------------------------------------------- spatial navigation
 function visibleFocusables() {
   const scr = $('.screen.active');
-  return scr ? $$('.focusable', scr).filter((el) => el.offsetParent !== null) : [];
+  return scr ? $$('.focusable', scr).filter((e) => e.offsetParent !== null) : [];
 }
-function focusFirst() { const el = visibleFocusables()[0]; if (el) el.focus(); }
+function focusFirst() { const e = visibleFocusables()[0]; if (e) e.focus({ preventScroll: true }); }
 function moveFocus(dir) {
   const cur = document.activeElement; const all = visibleFocusables();
   if (!all.includes(cur)) return focusFirst();
   const a = cur.getBoundingClientRect(); const ac = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
   let best = null, bestScore = Infinity;
-  for (const el of all) {
-    if (el === cur) continue;
-    const b = el.getBoundingClientRect(); const bc = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  for (const e of all) {
+    if (e === cur) continue;
+    const b = e.getBoundingClientRect(); const bc = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
     const dx = bc.x - ac.x, dy = bc.y - ac.y;
     const ok = { left: dx < -5, right: dx > 5, up: dy < -5, down: dy > 5 }[dir];
     if (!ok) continue;
-    const main = dir === 'left' || dir === 'right' ? Math.abs(dx) : Math.abs(dy);
-    const cross = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx);
-    const score = main + cross * 2.5;
-    if (score < bestScore) { bestScore = score; best = el; }
+    const horiz = dir === 'left' || dir === 'right';
+    const score = (horiz ? Math.abs(dx) : Math.abs(dy)) + (horiz ? Math.abs(dy) : Math.abs(dx)) * 2.5;
+    if (score < bestScore) { bestScore = score; best = e; }
   }
-  if (best) { best.focus(); best.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  if (best) { best.focus({ preventScroll: true }); best.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); }
 }
 
 // ---------------------------------------------------------------- screens
@@ -125,77 +134,123 @@ function show(id, push = true) {
   const cur = $('.screen.active');
   if (cur && cur.id === id) return;
   if (cur && push) stack.push(cur.id);
+  if (cur && screens[cur.id] && screens[cur.id].leave) screens[cur.id].leave();
   $$('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
   history.replaceState(null, '', '#' + id);
-  (screens[id] && screens[id].enter ? screens[id].enter() : Promise.resolve()).then(focusFirst);
-  if (cur && screens[cur.id] && screens[cur.id].leave) screens[cur.id].leave();
+  Promise.resolve(screens[id] && screens[id].enter ? screens[id].enter() : null).then(focusFirst);
 }
 function back() { show(stack.pop() || 'home', false); }
+// the server opens screens by navigating to /tv/#<screen> (same document → hashchange)
+window.addEventListener('hashchange', () => {
+  const id = location.hash.slice(1) || 'home';
+  if (id === 'home') { stack.length = 0; show('home', false); } else show(id);
+});
 
 function tile(app, small) {
-  const el = document.createElement('div');
-  el.className = 'tile focusable' + (small ? ' small' : ''); el.tabIndex = 0;
-  el.style.background = `linear-gradient(145deg, ${app.color}, ${app.color}99 60%, #0005)`;
-  el.innerHTML = `<div class="icon"></div><div class="name"></div>`;
-  $('.icon', el).textContent = app.icon; $('.name', el).textContent = app.name;
-  el.onclick = () => (app.type === 'system' ? show(app.id) : (toast(`Opening ${app.name}…`), rpc.call('launch', { id: app.id })));
-  return el;
+  const t = el('div', 'tile focusable' + (small ? ' small' : '')); t.tabIndex = 0;
+  const c = app.color || '#333';
+  t.style.background = `linear-gradient(145deg, ${c}, ${c}aa 60%, #0006)`;
+  if (app.icon) { const i = el('img', 'icon'); i.src = app.icon; i.alt = ''; i.onerror = () => { i.replaceWith(el('div', 'letter', app.name[0])); }; t.append(i); }
+  else t.append(el('div', 'letter', (app.letter || app.name[0] || '?')));
+  t.append(el('div', 'name', app.name));
+  t.onclick = () => openApp(app);
+  return t;
+}
+function openApp(app) {
+  if (app.type === 'system') return show(app.id);
+  toast(`Opening ${app.name}…`);
+  rpc.call('launch', { id: app.id });
+}
+function item(label, val, onclick, cls) {
+  const i = el('div', 'item focusable' + (cls ? ' ' + cls : '')); i.tabIndex = 0;
+  const l = el('span'); if (typeof label === 'string') l.textContent = label; else l.append(...label);
+  i.append(l, el('span', 'val', val || '')); i.onclick = onclick; return i;
 }
 
-screens.home = {
-  async enter() {
-    if ($('#row-stream').children.length) return;
-    const apps = await rpc.call('apps') || [];
-    apps.filter((a) => a.type === 'web').forEach((a) => $('#row-stream').append(tile(a)));
-    apps.filter((a) => a.type === 'system').forEach((a) => $('#row-system').append(tile(a, true)));
-  },
-};
+async function loadApps() { apps = (await rpc.call('apps')) || apps; renderHome(); }
+function renderHome() {
+  const fill = (row, list, small) => { row.innerHTML = ''; list.forEach((a) => row.append(tile(a, small))); };
+  fill($('#row-stream'), apps.filter((a) => a.type === 'web' && !a.custom));
+  fill($('#row-custom'), [...apps.filter((a) => a.custom), apps.find((a) => a.id === 'addapp')].filter(Boolean), true);
+  fill($('#row-system'), apps.filter((a) => a.type === 'system' && a.id !== 'addapp'), true);
+}
+screens.home = { enter() { if (!apps.length) return loadApps(); } };
 
+// ---------- Media Player
 screens.media = {
   dir: null, trail: [],
-  async enter() { await this.load(this.dir); },
-  async load(dir, up) {
-    if (!up && dir !== this.dir && dir) this.trail.push(this.dir);
+  async enter() {
+    await this.load(this.dir, true);
+    const rec = (await rpc.call('mediaRecent')) || [];
+    const box = $('#media-recent'); box.innerHTML = '';
+    if (!rec.length) box.append(el('div', 'item empty', 'Nothing played yet'));
+    rec.forEach((r) => box.append(item('▶  ' + r.name, '', () => rpc.call('mediaPlay', { path: r.path }))));
+  },
+  async load(dir, keep) {
+    if (!keep && dir !== this.dir && dir) this.trail.push(this.dir);
     this.dir = dir;
-    $('#media-path').textContent = dir || 'Videos and USB drives';
-    const items = await rpc.call('mediaList', { dir }) || [];
+    $('#media-path').textContent = dir || 'Videos, music and USB drives · 4K files play in 4K';
+    const items = (await rpc.call('mediaList', { dir })) || [];
     const list = $('#media-list'); list.innerHTML = '';
-    if (dir) items.unshift({ name: '⬑  Up', dir: true, up: true });
-    if (!items.length) list.innerHTML = '<div class="item">No media found. Copy videos to ~/Videos or plug in a USB drive.</div>';
+    if (dir) list.append(item('⬑  Up', '', () => this.load(this.trail.pop() || null, true).then(focusFirst)));
+    if (!items.length) list.append(el('div', 'item empty', dir ? 'Empty folder' : 'No media yet: copy files to ~/Videos or plug in a USB drive'));
+    const size = (b) => (b > 1e9 ? (b / 1e9).toFixed(1) + ' GB' : b > 1e6 ? Math.round(b / 1e6) + ' MB' : '');
     for (const it of items) {
-      const el = document.createElement('div'); el.className = 'item focusable'; el.tabIndex = 0;
-      el.innerHTML = `<span></span><span class="val">${it.dir ? 'Folder' : ''}</span>`;
-      el.firstChild.textContent = (it.dir && !it.up ? '📁  ' : it.up ? '' : '🎬  ') + it.name;
-      el.onclick = () => (it.up ? this.load(this.trail.pop() || null, true).then(focusFirst)
-        : it.dir ? this.load(it.path).then(focusFirst) : rpc.call('mediaPlay', { path: it.path }));
-      list.append(el);
+      list.append(item((it.dir ? '📁  ' : /\.(mp3|flac|m4a|aac|ogg|opus|wav)$/i.test(it.name) ? '🎵  ' : '🎬  ') + it.name, it.dir ? 'Folder' : size(it.size),
+        () => (it.dir ? this.load(it.path).then(focusFirst) : rpc.call('mediaPlay', { path: it.path }))));
     }
   },
 };
+$('#media-url').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value.trim()) { rpc.call('mediaPlay', { path: e.target.value.trim() }); e.target.value = ''; }
+});
 
+// ---------- Web Browser
 screens.browser = {
-  enter() {
-    const sites = [
-      ['Google', 'https://www.google.com', '#4285f4', 'G'], ['Wikipedia', 'https://www.wikipedia.org', '#555', 'W'],
-      ['Twitch', 'https://www.twitch.tv', '#9146ff', 'T'], ['Spotify', 'https://open.spotify.com', '#1db954', 'S'],
-    ];
-    const row = $('#row-sites');
-    if (!row.children.length) {
-      for (const [name, url, color, icon] of sites) {
-        const t = tile({ name, color, icon }, true);
-        t.onclick = () => rpc.call('launch', { id: 'url', url }); row.append(t);
-      }
-    }
-    return Promise.resolve();
+  async enter() {
+    const d = (await rpc.call('bookmarks')) || { bookmarks: [], history: [] };
+    const row = $('#row-bookmarks'); row.innerHTML = '';
+    d.bookmarks.forEach((b) => {
+      let host = ''; try { host = new URL(b.url).hostname; } catch (_) {}
+      const colors = ['#e0115f', '#7c3aed', '#0891b2', '#16a34a', '#ea580c', '#2563eb'];
+      const t = tile({ name: b.name, color: colors[(host.length + b.name.length) % colors.length], letter: b.name[0] }, true);
+      t.onclick = () => rpc.call('launch', { id: 'url', url: b.url });
+      row.append(t);
+    });
+    const hist = $('#browser-history'); hist.innerHTML = '';
+    if (!d.history.length) hist.append(el('div', 'item empty', 'No recent pages'));
+    d.history.slice(0, 6).forEach((h) => hist.append(item(h.url.replace(/^https?:\/\//, ''), '', () => rpc.call('launch', { id: 'url', url: h.url }))));
   },
 };
 $('#url').addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter') return;
-  let v = e.target.value.trim(); if (!v) return;
-  if (!/^https?:\/\//.test(v)) v = /\.[a-z]{2,}(\/|$)/i.test(v) && !v.includes(' ') ? 'https://' + v : 'https://www.google.com/search?q=' + encodeURIComponent(v);
-  rpc.call('launch', { id: 'url', url: v });
+  if (e.key === 'Enter' && e.target.value.trim()) { rpc.call('launch', { id: 'url', url: e.target.value.trim() }); e.target.value = ''; }
 });
 
+// ---------- Add App
+let zoom = 1.25;
+screens.addapp = {
+  enter() {
+    const list = $('#custom-list'); list.innerHTML = '';
+    const mine = apps.filter((a) => a.custom);
+    if (!mine.length) list.append(el('div', 'item empty', 'No apps installed yet'));
+    mine.forEach((a) => list.append(item(a.name, 'Remove', async () => {
+      await rpc.call('removeApp', { id: a.id }); toast(`${a.name} removed`); await loadApps(); this.enter(); focusFirst();
+    }, 'danger')));
+  },
+};
+$$('#app-zoom .chip').forEach((c) => { c.onclick = () => { zoom = Number(c.dataset.z); $$('#app-zoom .chip').forEach((x) => x.classList.toggle('active', x === c)); }; });
+async function installFromField() {
+  const v = $('#app-url').value.trim(); if (!v) { $('#app-url').focus(); return; }
+  $('#app-msg').textContent = 'Installing…';
+  const r = await rpc.call('installUrl', { url: v, scale: zoom }, 20000);
+  if (!r || r.error) { $('#app-msg').textContent = 'Could not install: ' + ((r && r.error) || 'timeout'); return; }
+  $('#app-msg').textContent = `Installed “${r.name}”. Find it on the home screen.`;
+  $('#app-url').value = ''; await loadApps(); screens.addapp.enter();
+}
+$('#app-install').onclick = installFromField;
+$('#app-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') installFromField(); });
+
+// ---------- System Info
 screens.system = {
   timer: null,
   async enter() { await this.refresh(); this.timer = setInterval(() => this.refresh(), 2000); },
@@ -210,11 +265,12 @@ screens.system = {
       ['Power', th ? (th.underVoltage ? '⚠ Under-voltage' : th.underVoltageOccurred ? 'Under-voltage occurred' : 'OK') : '—'],
       ['Throttling', th ? (th.throttled ? 'Active' : th.softTempLimit ? 'Soft temp limit' : 'None') : '—'], ['Uptime', i.uptimeH + ' h'],
     ];
-    $('#stats').innerHTML = rows.map(([k]) => `<div class="stat"><div class="k">${k}</div><div class="v"></div></div>`).join('');
-    $$('#stats .v').forEach((el, n) => { el.textContent = rows[n][1]; });
+    const box = $('#stats'); box.innerHTML = '';
+    rows.forEach(([k, v]) => { const s = el('div', 'stat'); s.append(el('div', 'k', k), el('div', 'v', v)); box.append(s); });
   },
 };
 
+// ---------- Pairing
 screens.pair = {
   timer: null,
   async enter() {
@@ -223,8 +279,8 @@ screens.pair = {
       $('#pattern').src = '/api/pair/pattern.svg?' + Date.now();
       $('#pair-code').textContent = p.code;
       $('#pair-url').textContent = p.url.split('/#')[0].replace('http://', '');
-      const info = await rpc.call('info');
-      $('#pair-ip').textContent = info && info.ip.length ? `If .local doesn't open, use http://${info.ip[0]}${location.port && location.port !== '80' ? ':' + location.port : ''}` : '';
+      $('#direct').style.display = p.ipUrl ? '' : 'none';
+      if (p.ipUrl) { $('#pattern-ip').src = '/api/pair/pattern.svg?via=ip&' + Date.now(); $('#pair-ip').textContent = p.ips[0]; }
       $('#pair-devices').textContent = p.devices.length ? `Paired: ${p.devices.map((d) => d.name).join(', ')}` : 'No remotes paired yet';
     };
     await load();
@@ -233,15 +289,18 @@ screens.pair = {
   leave() { clearInterval(this.timer); },
 };
 
+// ---------- Settings
 screens.settings = {
   async enter() {
-    settings = await rpc.call('settings') || settings;
+    settings = (await rpc.call('settings')) || settings;
     const p = await rpc.call('pairInfo');
     const yes = (v) => (v ? 'On' : 'Off');
     const cycle = (key, opts) => () => this.set({ [key]: opts[(opts.indexOf(settings[key]) + 1) % opts.length] });
+    const withHint = (t, h) => { const s = el('span', '', t); s.append(el('span', 'hint', h)); return [s]; };
     const rows = [
       ['Start PiVista on boot', yes(settings.autostart), () => this.set({ autostart: !settings.autostart })],
-      ['Allow 4K output for video player', yes(settings.allow4k), () => this.set({ allow4k: !settings.allow4k })],
+      [withHint('Block YouTube ads', 'Turn off if you have YouTube Premium or anything misbehaves'), yes(settings.youtubeAdblock), () => this.set({ youtubeAdblock: !settings.youtubeAdblock })],
+      ['Allow 4K output for media player', yes(settings.allow4k), () => this.set({ allow4k: !settings.allow4k })],
       ['Opening animation', yes(settings.showSplash), () => this.set({ showSplash: !settings.showSplash })],
       ['Screensaver after', settings.screensaverMinutes ? settings.screensaverMinutes + ' min' : 'Never', cycle('screensaverMinutes', [5, 15, 30, 60, 0])],
       ['CPU slow-down temperature', settings.thermalLimitC + ' °C', cycle('thermalLimitC', [70, 75, 80])],
@@ -254,10 +313,8 @@ screens.settings = {
     const focusedIdx = $$('#settings-list .item').indexOf(document.activeElement);
     const list = $('#settings-list'); list.innerHTML = '';
     rows.forEach(([label, val, fn, cls], n) => {
-      const el = document.createElement('div'); el.className = 'item focusable ' + (cls || ''); el.tabIndex = 0;
-      el.innerHTML = '<span></span><span class="val"></span>';
-      el.children[0].textContent = label; el.children[1].textContent = val; el.onclick = fn; list.append(el);
-      if (n === focusedIdx) setTimeout(() => el.focus());
+      const i = item(label, val, fn, cls); list.append(i);
+      if (n === focusedIdx) setTimeout(() => i.focus({ preventScroll: true }));
     });
   },
   async set(patch) { settings = await rpc.call('setSettings', { patch }); await this.enter(); },
@@ -265,7 +322,7 @@ screens.settings = {
 
 // ---------------------------------------------------------------- toasts, clock, screensaver
 function toast(msg) {
-  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  const t = el('div', 'toast', msg);
   $('#toasts').append(t); setTimeout(() => t.remove(), 3000);
 }
 function tick() {
@@ -283,6 +340,7 @@ setInterval(() => {
   if (lim && idle > lim && !$('#screensaver').classList.contains('on')) $('#screensaver').classList.add('on');
   if (idle % 20 === 0) { const c = $('#ss-clock'); c.style.left = Math.random() * 1300 + 'px'; c.style.top = Math.random() * 850 + 'px'; }
 }, 1000);
+['pointermove', 'click'].forEach((ev) => document.addEventListener(ev, () => { idle = 0; $('#screensaver').classList.remove('on'); }));
 
 // ---------------------------------------------------------------- input
 document.addEventListener('keydown', (e) => {
@@ -296,27 +354,40 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('click', (e) => { const a = e.target.closest('[data-action="back"]'); if (a) back(); });
 
+function setRemotes(n) {
+  $('#remote-status').textContent = n ? `${n} remote${n > 1 ? 's' : ''}` : 'No remote';
+  $('#remote-status').className = 'pill' + (n ? ' ok' : '');
+}
 rpc.on((m) => {
-  if (m.t === 'hello') settings = m.settings;
-  if (m.t === 'settings') settings = m.settings;
-  if (m.t === 'paired') { toast(`📱 ${m.name} connected as remote`); $('#remote-status').textContent = 'Remote paired'; $('#remote-status').className = 'pill ok'; if ($('#pair.active')) back(); }
-  if (m.t === 'thermal') {
-    if (m.message) toast(m.message);
-    $('#temp').className = 'pill' + (m.level > 0 ? ' hot' : '');
+  if (m.t === 'hello' || m.t === 'settings') settings = m.settings;
+  if (m.t === 'apps') { apps = m.apps; renderHome(); }
+  if (m.t === 'paired') {
+    toast(`📱 ${m.name} connected as remote`);
+    rpc.call('pairInfo').then((p) => p && setRemotes(p.devices.length));
+    if ($('#pair.active')) back();
   }
-  if (m.t === 'volume' && m.message) toast(m.message);
+  if (m.t === 'thermal') { if (m.message) toast(m.message); $('#temp').className = 'pill' + (m.level > 0 ? ' hot' : ''); }
+  if ((m.t === 'volume' || m.t === 'info') && m.message) toast(m.message);
 });
-setInterval(async () => { const i = await rpc.call('info'); if (i && i.tempC != null) $('#temp').textContent = i.tempC + '°C'; }, 10000);
+async function refreshStatus() {
+  const i = await rpc.call('info');
+  if (!i) return;
+  if (i.tempC != null) $('#temp').textContent = i.tempC + '°C';
+  // direct address, always visible: the fallback when pivista.local doesn't resolve
+  $('#ip').textContent = i.ip.length ? i.ip[0] + (location.port && location.port !== '80' ? ':' + location.port : '') : '';
+}
+setInterval(refreshStatus, 10000);
 
 // ---------------------------------------------------------------- boot
 (async () => {
   tick();
   const s = await rpc.call('settings'); if (s) settings = s;
   if (settings.showSplash !== false) await splash(); else $('#splash').remove();
+  refreshStatus();
   const p = await rpc.call('pairInfo');
-  if (p && p.devices.length) { $('#remote-status').textContent = `${p.devices.length} remote${p.devices.length > 1 ? 's' : ''}`; $('#remote-status').className = 'pill ok'; }
+  if (p) setRemotes(p.devices.length);
+  await loadApps();
   const start = location.hash.slice(1) || (p && !p.devices.length ? 'pair' : 'home');
-  if (start !== 'home') { $$('.screen').forEach((x) => x.classList.remove('active')); stack.push('home'); }
+  if (start !== 'home') stack.push('home');
   show(start, false);
-  screens.home.enter();
 })();

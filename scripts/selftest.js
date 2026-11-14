@@ -20,6 +20,12 @@ setTimeout(async () => {
     if (!svg.includes('<circle')) fail('pattern');
     const bad = await fetch(base + '/api/pair', { method: 'POST', body: JSON.stringify({ code: '000000' }) });
     if (bad.status !== 401) fail('pair should reject bad code');
+    const hello = await (await fetch(base + '/api/hello')).json();
+    if (!Array.isArray(hello.ips)) fail('hello');
+    const up = await fetch(base + '/api/apps/install?name=a.html', { method: 'POST', body: '<p>x</p>' });
+    if (up.status !== 401) fail('upload must require a paired token');
+    if ((await fetch(base + '/userapps/u00000000/x')).status !== 404) fail('userapps 404');
+    for (const p of ['/shared/logo.svg', '/shared/icons/youtube.svg', '/remote/manifest.webmanifest']) if (!(await fetch(base + p)).ok) fail(p);
     console.log('selftest OK');
     srv.kill(); process.exit(0);
   } catch (e) { fail(e.message); }

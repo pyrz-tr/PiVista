@@ -3,32 +3,65 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b0a1a">
+<meta name="theme-color" content="#0d0710">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/remote/manifest.webmanifest">
+<link rel="icon" href="/shared/logo.svg">
+<link rel="apple-touch-icon" href="/shared/logo.svg">
 <title>PiVista Remote</title>
 <link rel="stylesheet" href="/remote/remote.css">
 </head>
 <body>
 <!-- pairing -->
-<main id="pair-view" class="view">
-  <div class="logo"><span class="dot"></span><span>Pi<b>Vista</b></span></div>
+<main id="pair-view" class="view hidden">
+  <img class="hero-logo" src="/shared/logo.svg" alt="">
+  <div class="logo"><span>Pi<b>Vista</b></span></div>
   <p class="lead">Scan the dot pattern on your TV with your phone camera, or type the 6-digit code shown on screen.</p>
   <input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
   <button id="pair-btn" class="primary">Pair</button>
   <p id="pair-err" class="err"></p>
+  <p class="hint">Page won't load from <i>pivista.local</i>? Use the IP address shown at the top of the TV screen, or scan the small “direct” pattern.</p>
 </main>
 
 <!-- remote -->
 <main id="remote-view" class="view hidden">
   <header>
-    <div class="logo small"><span class="dot"></span><span>Pi<b>Vista</b></span></div>
-    <span id="conn" class="conn">connecting…</span>
+    <div class="logo small"><img src="/shared/logo.svg" alt=""><span>Pi<b>Vista</b></span></div>
+    <div class="hdr-right">
+      <span id="conn" class="conn">connecting…</span>
+      <button id="kbd-btn" class="icon-btn" aria-label="Keyboard">⌨</button>
+    </div>
   </header>
+
+  <div id="ip-banner" class="banner hidden">
+    <span>Can't reach <b id="ip-banner-host"></b>.</span>
+    <button id="ip-switch">Use direct IP</button>
+  </div>
+
+  <!-- context: media player -->
+  <div id="ctx-media" class="ctx hidden">
+    <div class="np-title" id="np-title">Now playing</div>
+    <input type="range" id="np-seek" min="0" max="100" value="0">
+    <div class="np-time"><span id="np-pos">0:00</span><span id="np-dur">0:00</span></div>
+    <div class="np-btns">
+      <button data-mk="left">⏪ 10</button><button data-mk="playpause" id="np-pp">⏸</button><button data-mk="right">10 ⏩</button>
+      <button data-mk="subs">CC</button><button data-mk="audio">🔊⇄</button><button data-mk="stop">⏹</button>
+    </div>
+  </div>
+
+  <!-- context: web browser -->
+  <div id="ctx-browser" class="ctx hidden">
+    <div class="br-row">
+      <button data-bn="back">◀</button><button data-bn="forward">▶</button><button data-bn="reload">⟳</button>
+      <input id="br-url" placeholder="Search or address" enterkeyhint="go" autocapitalize="off" autocomplete="off">
+      <button id="br-star">☆</button>
+    </div>
+  </div>
 
   <nav class="tabs">
     <button data-tab="pad" class="active">Remote</button>
+    <button data-tab="screen">Screen</button>
     <button data-tab="touch">Touchpad</button>
     <button data-tab="apps">Apps</button>
   </nav>
@@ -49,9 +82,18 @@
     <div class="vol">
       <button data-vol="down">−</button><button data-vol="mute">🔇</button><button data-vol="up">+</button>
     </div>
-    <div class="kbd">
-      <input id="type" placeholder="Type on TV…" autocomplete="off" autocapitalize="off" enterkeyhint="send">
-      <button id="bksp">⌫</button>
+  </section>
+
+  <section id="tab-screen" class="tab hidden">
+    <div class="mirror" id="mirror">
+      <img id="mirror-img" alt="">
+      <div id="mirror-msg" class="mirror-msg">Connecting to the TV screen…</div>
+    </div>
+    <p class="hint center">Tap to press · drag up/down to scroll · video isn't streamed to save the Pi's power</p>
+    <div class="quick">
+      <button data-key="back" class="round">↩<small>Back</small></button>
+      <button data-key="home" class="round">⌂<small>Home</small></button>
+      <button data-key="playpause" class="round">⏯<small>Play</small></button>
     </div>
   </section>
 
@@ -69,6 +111,34 @@
     <button id="unpair" class="link">Unpair this phone</button>
   </section>
 </main>
+
+<!-- keyboard sheet -->
+<div id="kbd" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-head"><span id="kbd-label">Type on TV</span><button id="kbd-close" class="icon-btn">✕</button></div>
+    <input id="kbd-input" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="Start typing…">
+    <div class="kbd-row">
+      <button id="kbd-bksp">⌫</button><button id="kbd-clear">Clear</button><button id="kbd-tab">Next field</button><button id="kbd-go" class="primary">Enter</button>
+    </div>
+    <p class="hint">Text appears on the TV as you type.</p>
+  </div>
+</div>
+
+<!-- add app sheet -->
+<div id="addapp" class="sheet hidden">
+  <div class="sheet-card">
+    <div class="sheet-head"><span>Add an app</span><button id="add-close" class="icon-btn">✕</button></div>
+    <label class="lbl">Website or PWA address</label>
+    <input id="add-url" placeholder="e.g. music.youtube.com" autocapitalize="off" autocomplete="off" inputmode="url">
+    <label class="lbl">…or upload an .html file or a .zip web app</label>
+    <input id="add-file" type="file" accept=".html,.htm,.zip,text/html,application/zip">
+    <label class="lbl">TV zoom</label>
+    <div class="seg" id="add-zoom"><button data-z="1">100%</button><button data-z="1.25" class="active">125%</button><button data-z="1.5">150%</button></div>
+    <button id="add-go" class="primary">Install</button>
+    <p id="add-msg" class="hint"></p>
+    <div id="add-list"></div>
+  </div>
+</div>
 <script src="/remote/remote.js"></script>
 </body>
 </html>

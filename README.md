@@ -1,12 +1,20 @@
+<p align="center"><img src="ui/shared/logo.svg" width="140" alt="PiVista logo"></p>
+
 # PiVista
 
 **Turn any HDMI monitor into a smart TV with a Raspberry Pi 4. Your phone is the remote.**
 
-- 📺 10-foot TV interface (1080p) with an animated opening screen
-- ▶️ YouTube (TV layout), Netflix, HBO Max and Disney+ via their official web players (Widevine DRM)
+- 📺 10-foot TV interface (1080p) with an animated raspberry opening screen
+- ▶️ YouTube (TV layout), Netflix, HBO Max and Disney+ via their official web players (Widevine DRM), each zoomed to suit a TV
+- 🚫 Optional **YouTube ad blocker** (off by default, so YouTube Premium is never affected)
 - 📱 Phone remote at **http://pivista.local**: pair by scanning the dot pattern on the TV. No app to install, no mouse, no keyboard.
-- 🎬 Native media player (mpv, hardware decode) for videos on `~/Videos` or USB drives, **with 4K output** for 4K files
-- ⚙️ System apps: Settings, System Info (temperature, throttling, power), Web Browser, Pair Remote
+  - **Screen tab:** see the TV screen on your phone and tap to press things. Video is never streamed, so the Pi stays fast.
+  - **Keyboard pops up on the phone** when a text field gets focus on the TV
+  - **Direct-IP fallback** when `.local` (mDNS) doesn't work on your phone or network
+- 🧩 **Install your own apps:** any website or PWA by address, a single `.html` file, or a `.zip` web app
+- 🎬 Media Player (mpv, hardware decode): local files, USB drives and stream links, with **4K output** for 4K files, plus now-playing controls on the phone
+- 🌐 Web Browser with bookmarks, history, and back/forward/reload and an address bar on the phone
+- ⚙️ System apps: Settings, System Info (temperature, throttling, power), Pair Remote, Add App
 - 🚀 Starts on boot (you can turn that off in Settings)
 - 🌡️ Overheat protection, SD-card-friendly tuning, HDMI tuned to work every time
 
@@ -51,7 +59,7 @@ git clone https://github.com/pyrz-tr/PiVista.git && cd PiVista && sudo ./scripts
 **From the .deb** (built by GitHub Actions; download it from *Releases* or the workflow artifacts):
 
 ```bash
-sudo apt install ./pivista_0.1.0_all.deb
+sudo apt install ./pivista_0.2.0_all.deb
 ```
 
 Installer options: `--keep-hostname` (don't rename the Pi to `pivista`), `--no-tuning` (skip system tuning).
@@ -65,13 +73,43 @@ Installer options: `--keep-hostname` (don't rename the Pi to `pivista`), `--no-t
 | Home | Back to the PiVista home screen from anywhere |
 | Play | Play/pause |
 | − 🔇 + | HDMI volume |
-| *Type on TV…* | Types into whatever field is focused on the TV: search boxes, logins, URLs |
+| ⌨ (top right) | Opens the phone keyboard. It **opens by itself** when a text field gets focus on the TV. What you type replaces the TV field's text live. Enter submits, and "Next field" works like Tab. |
+| Screen tab | Live view of the TV (about 6 fps, low-res JPEG). Tap to press, drag to scroll. Mirroring pauses while a video plays or the media player is open, to save the Pi's CPU and RAM. |
 | Touchpad tab | Mouse pointer for sites that need it (e.g. signing in to Netflix): drag to move, tap to click, two fingers to scroll |
-| Apps tab | Jump straight to any app |
+| Apps tab | Jump straight to any app, or **+ Add app** |
+| Now-playing bar | Appears while the media player runs: seek, pause, ±10 s, subtitles, audio track, stop |
+| Browser bar | Appears in the web browser: back, forward, reload, address bar, ☆ bookmark |
 
 Tip: in the phone browser use **Add to Home Screen**, and the remote opens full screen like an app.
 
-If `pivista.local` doesn't open on your phone (some older Android versions can't resolve `.local`), use the IP address shown on the pairing screen.
+### When `pivista.local` doesn't open (mDNS fallback)
+
+Some phones and routers can't resolve `.local` names (older Android versions, guest Wi-Fi, some mesh systems). PiVista always gives you a direct route:
+
+- The TV shows its **IP address** in the top bar on every screen.
+- The pairing screen has a second, smaller **"direct" dot pattern** that encodes `http://<ip>/#pair=…`.
+- An already paired phone remembers the Pi's IP. If `.local` stops responding, the remote offers **"Use direct IP"** and moves your pairing over automatically.
+
+Tip: give the Pi a fixed IP (DHCP reservation in your router) so the direct address never changes.
+
+## YouTube ad blocker
+
+**Settings → Block YouTube ads** (off by default). When it's on, PiVista injects a small script into YouTube that removes ad entries from YouTube's player data, blocks ad and tracking hosts, and automatically skips any ad that still gets through.
+
+YouTube changes often, so this is best-effort. If you have **YouTube Premium**, or anything acts strangely, just turn it off: nothing is injected into YouTube while it's off.
+
+## Installing your own apps
+
+Open **Add App** on the TV, or **Apps → + Add app** on the phone:
+
+| Format | How | Notes |
+|---|---|---|
+| Website / PWA | Enter its address (e.g. `music.youtube.com`) | PiVista reads the site's web app manifest for the name, icon, colour and start page |
+| Single HTML file | Upload a `.html` from your phone | Good for dashboards, clocks, games |
+| Web app bundle | Upload a `.zip` with `index.html` at the root (or in one top folder) | An optional `manifest.json` sets the name and icon |
+
+Pick a TV zoom (100/125/150%) so the app is readable from the couch. Installed apps appear in **My Apps** on the home screen. Remove them from the same screens.
+Uploaded apps run from `http://localhost/userapps/…`, a separate browser origin from the TV interface, so an app can't control PiVista.
 
 ### Command line
 
@@ -104,6 +142,7 @@ pivista uninstall  # remove services and boot tweaks (add --purge via scripts/un
 - **Stack:** Node.js (2 small dependencies: `ws` and `qrcode`) and plain HTML/CSS/JS. Nothing to compile, so it's easy to hack on.
 - **Display:** [cage](https://github.com/cage-kiosk/cage) is a minimal Wayland compositor that runs one app full screen. No desktop runs in the background, which leaves more RAM and GPU for video.
 - **Remote input:** the server injects key presses, text and pointer events straight into Chromium over the DevTools Protocol. That works the same on PiVista's own UI and on Netflix/YouTube, with no fake input devices.
+- **Correct sizing per app:** desktop sites render at `1920/zoom × 1080/zoom` CSS pixels with a matching device pixel ratio, so they fill 1080p sharply with TV-sized text. Netflix, Max and Disney+ use 150%, the browser uses 125%, and YouTube's TV layout uses 100% because it's already built for TVs.
 - **Streaming apps:** each one opens its official web player with a suitable user agent. YouTube gets the TV ("Leanback") layout, built for D-pad navigation. Netflix, Max and Disney+ get a Chrome OS user agent, which unlocks Widevine HD. Change these in `server/apps.js`.
 - **Pairing:** the TV shows a one-time 6-digit code as a dot pattern (a QR code drawn with round dots) pointing to `http://pivista.local/#pair=CODE`. The phone trades the code for a long-lived device token. Only the TV itself can read the pattern endpoint. Codes rotate every 5 minutes and work only once.
 
@@ -150,8 +189,10 @@ Then open the TV interface at http://localhost:8080/tv/ (use the arrow keys, Ent
 To test remote control end to end on a desktop, start Chromium with `--remote-debugging-port=9222` and open the TV URL in it.
 
 ```
-server/   Node.js server: index.js (HTTP/WS + routing), cdp.js (browser control), pairing.js,
-          player.js (mpv), system.js (hardware), thermal.js, apps.js (app catalog), config.js
+server/   Node.js server: index.js (HTTP/WS + routing, mirror), cdp.js (browser control), pairing.js,
+          player.js (mpv), system.js (hardware), thermal.js, apps.js (app catalog), config.js,
+          adblock.js (YouTube ad blocker), userapps.js (installed apps)
+ui/shared logo + app icons
 ui/tv/    TV interface (splash, spatial navigation, system apps)
 ui/remote Phone remote (PWA)
 system/   systemd units, kiosk launcher, boot config, CLI
@@ -163,13 +204,15 @@ packaging Debian package build
 
 ## CI / packaging
 
-`.github/workflows/build.yml` runs on every push. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.1.0` also publishes a GitHub Release with the `.deb`.
+`.github/workflows/build.yml` runs on every push. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.2.0` also publishes a GitHub Release with the `.deb`.
 
-## Known limitations (v0.1)
+## Known limitations (v0.2)
 
 - Streaming services can change their web apps or block unusual user agents at any time. If one breaks, try a different user agent in `server/apps.js`.
 - Netflix/Max/Disney+ web players are made for mouse use. Use the D-pad where it works and the touchpad tab for the rest.
 - No HDMI-CEC (TV remote) support yet.
+- The phone keyboard pops up for real text fields. YouTube's TV layout uses its own on-screen keyboard, so use the D-pad there or open YouTube search in the browser.
+- iOS won't let a web page open the keyboard by itself: the keyboard sheet appears, and you tap the field once.
 
 ## License
 

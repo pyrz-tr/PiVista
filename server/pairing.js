@@ -17,8 +17,9 @@ function currentCode() {
   return code;
 }
 
-function pairUrl(port) {
-  const host = `${os.hostname()}.local${port && port !== 80 ? ':' + port : ''}`;
+// ip given -> direct-IP link (for phones/networks where .local / mDNS doesn't resolve)
+function pairUrl(port, ip) {
+  const host = `${ip || os.hostname() + '.local'}${port && port !== 80 ? ':' + port : ''}`;
   return `http://${host}/#pair=${currentCode()}`;
 }
 
@@ -40,8 +41,8 @@ function forget(id) {
 }
 
 // Render the QR matrix as the PiVista "dot pattern": round dots + rounded finder eyes.
-function patternSvg(port) {
-  const qr = QRCode.create(pairUrl(port), { errorCorrectionLevel: 'Q' });
+function patternSvg(port, ip) {
+  const qr = QRCode.create(pairUrl(port, ip), { errorCorrectionLevel: 'Q' });
   const n = qr.modules.size; const q = 2; const size = n + q * 2;
   const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
   let dots = '';
@@ -54,7 +55,7 @@ function patternSvg(port) {
   const eye = (r, c) => `<rect x="${c + q + 0.5}" y="${r + q + 0.5}" width="6" height="6" rx="1.8" fill="none" stroke="url(#g)" stroke-width="1"/>`
     + `<rect x="${c + q + 2}" y="${r + q + 2}" width="3" height="3" rx="0.9" fill="url(#g)"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="geometricPrecision">
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e1b4b"/><stop offset="1" stop-color="#4c1d95"/></linearGradient></defs>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a0a3f"/><stop offset="1" stop-color="#3b0764"/></linearGradient></defs>
 <rect width="${size}" height="${size}" rx="3" fill="#fff"/>
 <g fill="url(#g)">${dots}</g>${eye(0, 0)}${eye(0, n - 7)}${eye(n - 7, 0)}</svg>`;
 }

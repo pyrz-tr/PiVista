@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS = {
   thermalLimitC: 80,        // throttle CPU above this temperature
   showSplash: true,
   screensaverMinutes: 15,
+  youtubeAdblock: false,     // opt-in; leave off if you have YouTube Premium
 };
 
 function load(file, fallback) {

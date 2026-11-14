@@ -1,2 +1,3 @@
 { "name": "PiVista Remote", "short_name": "PiVista", "start_url": "/", "display": "standalone",
-  "background_color": "#0b0a1a", "theme_color": "#0b0a1a", "orientation": "portrait" }
+  "background_color": "#0d0710", "theme_color": "#0d0710", "orientation": "portrait",
+  "icons": [{ "src": "/shared/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }] }

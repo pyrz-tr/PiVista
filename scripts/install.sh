@@ -34,7 +34,7 @@ if [ "$FROM_DEB" = 0 ]; then
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     nodejs npm git curl rsync "$CHROMIUM_PKG" libwidevinecdm0 cage wlr-randr mpv ffmpeg \
     pipewire pipewire-pulse wireplumber pipewire-alsa avahi-daemon libnss-mdns \
-    fonts-noto-core fonts-noto-color-emoji zram-tools
+    fonts-noto-core fonts-noto-color-emoji zram-tools unzip yt-dlp
 fi
 
 # ------------------------------------------------------------------ app files
