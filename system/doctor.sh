@@ -28,6 +28,10 @@ echo; echo "== Programs"
 for c in cage wlr-randr curl node; do command -v "$c" >/dev/null && ok "$c: $(command -v "$c")" || { bad "$c missing"; hint "sudo apt install $c"; }; done
 CH="$(command -v chromium-browser || command -v chromium)"
 [ -n "$CH" ] && ok "chromium: $CH" || { bad "chromium missing"; hint "sudo apt install chromium-browser   (newer OS: chromium)"; }
+if [ -x /opt/pivista/system/start-kiosk.sh ] && ! runuser -u "$KIOSK_USER" -- test -x /opt/pivista/system/start-kiosk.sh 2>/dev/null; then
+  bad "user $KIOSK_USER cannot open /opt/pivista (permissions $(stat -c %a /opt/pivista)) → kiosk fails with status=203/EXEC"
+  hint "sudo chmod 755 /opt/pivista && sudo chmod -R a+rX /opt/pivista && sudo pivista restart"
+fi
 [ -x /opt/pivista/system/start-kiosk.sh ] && ok "start-kiosk.sh present" || { bad "/opt/pivista/system/start-kiosk.sh missing (old install)"; hint "re-run the installer (see README → Updating)"; }
 grep -q WLR_LIBINPUT_NO_DEVICES /etc/systemd/system/pivista-kiosk.service 2>/dev/null \
   && ok "kiosk service allows running without keyboard/mouse" \

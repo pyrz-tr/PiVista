@@ -53,6 +53,10 @@ if [ "$FROM_DEB" = 0 ]; then
   rsync -a --delete --exclude .git --exclude node_modules --exclude .data "$SRC/" "$APP_DIR/"
   (cd "$APP_DIR" && npm install --omit=dev --no-audit --no-fund)
 fi
+# The download goes to a root-only temp dir (mktemp -d = 700) and rsync -a copies that mode onto
+# $APP_DIR. The kiosk runs as the "pivista" user, so the app must be world-readable.
+chmod 755 "$APP_DIR"
+chmod -R a+rX "$APP_DIR"
 chmod +x "$APP_DIR"/system/*.sh "$APP_DIR"/system/pivista-cli "$APP_DIR"/scripts/*.sh
 
 # ------------------------------------------------------------------ user + services

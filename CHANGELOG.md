@@ -2,6 +2,11 @@
 
 All code is on the `claude/kind-mccarthy-xql5k2` branch.
 
+## 0.3.2
+
+- **Fix: black screen after installing with the one-line `curl … | sudo bash` command.** The installer downloaded into a root-only temp folder and `rsync` copied that `700` mode onto `/opt/pivista`, so the kiosk (running as user `pivista`) couldn't start its launcher (`status=203/EXEC`). The installer now makes `/opt/pivista` world-readable.
+- `pivista doctor` detects this permission problem and shows the one-line fix
+
 ## 0.3.1
 
 - **Fix: black screen when no keyboard/mouse is attached.** cage/wlroots refused to start without input devices; the kiosk now sets `WLR_LIBINPUT_NO_DEVICES=1` (new `system/start-kiosk.sh`, which also picks the DRM card with the connected HDMI monitor)

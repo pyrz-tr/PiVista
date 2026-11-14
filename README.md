@@ -197,6 +197,7 @@ Common findings:
 
 | Doctor says | Fix |
 |---|---|
+| Kiosk log repeats `status=203/EXEC`, or `user pivista cannot open /opt/pivista` | Folder permissions (fixed in 0.3.2): `sudo chmod 755 /opt/pivista && sudo chmod -R a+rX /opt/pivista && sudo pivista restart` |
 | `pivista-kiosk is inactive (enabled: disabled)` | Autostart was turned off: `sudo pivista enable && sudo pivista restart` |
 | `lightdm … is running` | The desktop login is taking the screen: `sudo systemctl disable --now lightdm && sudo pivista restart` |
 | `no monitor detected` | Use the HDMI port **next to the USB-C power port**, check the cable and the monitor's input, then `sudo pivista restart` |
