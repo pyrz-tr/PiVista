@@ -2,6 +2,14 @@
 
 All code is on the `claude/kind-mccarthy-xql5k2` branch.
 
+## 0.4.0
+
+- **Fix: Netflix, HBO Max, Disney+ (and other zoomed apps) only filled the top-left of the screen, with white around it.** The per-app TV zoom used device-metrics emulation, which in a real window only shrinks the page. It now uses real browser zoom through a small built-in Chromium extension (`system/zoom-extension`, asks `GET /api/zoom`), so pages re-layout and fill the screen. Phone Screen-tab taps are mapped for the zoom.
+- **Turkish (Türkçe)**: Settings → Language. The TV interface, phone remotes, games and server notices follow it.
+- **Faster games**: new WebGL batch renderer (`ui/games/render.js`): one GPU draw call per frame from a texture atlas, with an automatic Canvas-2D fallback when only software WebGL exists. Raspberry Rally, Berry Snake and Brick Blaster use it, and Berry Merge animates with GPU transforms.
+- Screen mirroring pauses while a game is running, so the Pi's CPU goes to the game
+- Temperature is checked every 30 s (every 10 s when the Pi is within 5 °C of the limit) instead of every 5 s; the TV's status bar refreshes every 30 s
+
 ## 0.3.2
 
 - **Fix: black screen after installing with the one-line `curl … | sudo bash` command.** The installer downloaded into a root-only temp folder and `rsync` copied that `700` mode onto `/opt/pivista`, so the kiosk (running as user `pivista`) couldn't start its launcher (`status=203/EXEC`). The installer now makes `/opt/pivista` world-readable.

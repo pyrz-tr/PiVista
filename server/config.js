@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
   showSplash: true,
   screensaverMinutes: 15,
   youtubeAdblock: false,     // opt-in; leave off if you have YouTube Premium
+  language: 'en',            // 'en' | 'tr' — TV, phone remotes and games follow it
 };
 
 function load(file, fallback) {

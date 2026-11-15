@@ -25,7 +25,9 @@ setTimeout(async () => {
     const up = await fetch(base + '/api/apps/install?name=a.html', { method: 'POST', body: '<p>x</p>' });
     if (up.status !== 401) fail('upload must require a paired token');
     if ((await fetch(base + '/userapps/u00000000/x')).status !== 404) fail('userapps 404');
-    for (const p of ['/games/rally.html', '/games/snake.html', '/games/bricks.html', '/games/merge.html', '/games/common.js', '/games/covers/rally.svg', '/shared/icons/games.svg', '/shared/logo.svg', '/shared/icons/youtube.svg', '/remote/manifest.webmanifest']) if (!(await fetch(base + p)).ok) fail(p);
+    for (const p of ['/games/rally.html', '/games/snake.html', '/games/bricks.html', '/games/merge.html', '/games/common.js', '/games/render.js', '/shared/i18n.js', '/games/covers/rally.svg', '/shared/icons/games.svg', '/shared/logo.svg', '/shared/icons/youtube.svg', '/remote/manifest.webmanifest']) if (!(await fetch(base + p)).ok) fail(p);
+    const z = await (await fetch(base + '/api/zoom?url=' + encodeURIComponent(base + '/tv/'))).json();
+    if (z.zoom !== 1) fail('zoom for TV UI must be 1');
     console.log('selftest OK');
     srv.kill(); process.exit(0);
   } catch (e) { fail(e.message); }

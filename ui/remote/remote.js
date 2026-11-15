@@ -31,11 +31,11 @@ async function pair(code) {
   try {
     const r = await fetch('/api/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, name }) });
     const j = await r.json();
-    if (!r.ok) throw new Error(j.error || 'Pairing failed');
+    if (!r.ok) throw new Error(t(j.error || 'Pairing failed'));
     token = j.token; store.set('pv-token', token);
     history.replaceState(null, '', '/');
     start();
-  } catch (e) { showPair(e.message + ' — check the code on your TV.'); }
+  } catch (e) { showPair(t('{err} — check the code on your TV.', { err: e.message })); }
 }
 $('#pair-btn').onclick = () => pair($('#code').value.trim());
 $('#code').addEventListener('input', (e) => { if (e.target.value.length === 6) pair(e.target.value); });
@@ -51,7 +51,7 @@ function connect() {
   ws.binaryType = 'blob';
   ws.onopen = () => {
     fails = 0;
-    $('#conn').textContent = 'connected'; $('#conn').className = 'conn on';
+    $('#conn').textContent = t('connected'); $('#conn').className = 'conn on';
     $('#ip-banner').classList.add('hidden');
     if (tab === 'screen') send({ t: 'mirror', on: true });
     fetch('/api/hello').then((r) => r.json()).then((h) => store.set('pv-ips', JSON.stringify(h.ips || []))).catch(() => {});
@@ -61,14 +61,15 @@ function connect() {
     if (typeof e.data !== 'string') return showFrame(e.data);
     const m = JSON.parse(e.data);
     if (m.t === 'res' && pending.has(m.id)) { pending.get(m.id)(m.error ? { error: m.error } : (m.data ?? {})); pending.delete(m.id); return; }
+    if (m.t === 'hello' || m.t === 'settings') { if (m.settings && PVI18N.set(m.settings.language || 'en')) { loadApps(); $('#conn').textContent = t('connected'); } }
     if (m.t === 'hello' || m.t === 'state') setState(m.state);
     if (m.t === 'apps') renderApps(m.apps);
     if (m.t === 'kbd') onTvField(m);
     if (m.t === 'mirror') mirrorPaused(m.paused);
   };
   ws.onclose = (e) => {
-    $('#conn').textContent = 'reconnecting…'; $('#conn').className = 'conn';
-    if (e.code === 4001) { forgetToken(); showPair('This phone is no longer paired. Scan the pattern again.'); return; }
+    $('#conn').textContent = t('reconnecting…'); $('#conn').className = 'conn';
+    if (e.code === 4001) { forgetToken(); showPair(t('This phone is no longer paired. Scan the pattern again.')); return; }
     fails += 1;
     maybeOfferIp();
     setTimeout(connect, Math.min(5000, 1000 + fails * 500));
@@ -99,12 +100,12 @@ function renderApps(apps) {
     b.style.background = `linear-gradient(135deg, ${a.color}, ${a.color}99)`;
     if (a.icon) { const i = document.createElement('img'); i.src = a.icon; i.alt = ''; b.append(i); }
     else { const l = document.createElement('div'); l.className = 'letter'; l.textContent = a.letter || a.name[0]; b.append(l); }
-    const s = document.createElement('span'); s.textContent = a.name; b.append(s);
+    const s = document.createElement('span'); s.textContent = a.type === 'system' ? t(a.name) : a.name; b.append(s);
     b.onclick = () => { buzz(); send({ t: 'launch', id: a.id }); };
     box.append(b);
   }
   const add = document.createElement('button'); add.className = 'app add';
-  add.innerHTML = '<div class="letter">+</div><span>Add app</span>';
+  add.innerHTML = '<div class="letter">+</div><span></span>'; add.lastChild.textContent = t('Add app');
   add.onclick = () => openAddApp(apps);
   box.append(add);
   renderCustomList(apps);
@@ -120,7 +121,7 @@ function setState(s) {
   $('#ctx-media').classList.toggle('hidden', !s.playing);
   $('#ctx-browser').classList.toggle('hidden', !s.browser || s.playing);
   if (s.playing && s.now) {
-    $('#np-title').textContent = s.now.title;
+    $('#np-title').textContent = s.now.title || t('Now playing');
     $('#np-pp').textContent = s.now.paused ? '▶' : '⏸';
     $('#np-pos').textContent = fmt(s.now.pos); $('#np-dur').textContent = fmt(s.now.duration);
     if (!seeking) { $('#np-seek').max = Math.max(1, Math.floor(s.now.duration)); $('#np-seek').value = Math.floor(s.now.pos); }
@@ -164,7 +165,7 @@ const kbdInput = $('#kbd-input');
 let kbdAuto = false; let kbdTimer = null;
 function openKbd(label, value, auto) {
   kbdAuto = auto;
-  $('#kbd-label').textContent = label ? `TV: ${label}` : 'Type on TV';
+  $('#kbd-label').textContent = label ? t('TV: {label}', { label }) : t('Type on TV');
   kbdInput.value = value || '';
   $('#kbd').classList.remove('hidden');
   kbdInput.focus(); // opens the phone keyboard where the browser allows it
@@ -191,7 +192,7 @@ $$('.tabs button').forEach((b) => { b.onclick = () => {
   const prev = tab; tab = b.dataset.tab;
   $$('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
   $$('.tab').forEach((t) => t.classList.toggle('hidden', t.id !== 'tab-' + tab));
-  if (tab === 'screen' && prev !== 'screen') { $('#mirror-msg').textContent = 'Loading TV screen…'; send({ t: 'mirror', on: true }); }
+  if (tab === 'screen' && prev !== 'screen') { $('#mirror-msg').textContent = t('Loading TV screen…'); send({ t: 'mirror', on: true }); }
   if (prev === 'screen' && tab !== 'screen') send({ t: 'mirror', on: false });
 }; });
 
@@ -208,9 +209,10 @@ function mirrorPaused(reason) {
   const msgs = {
     video: '▶ A video is playing on the TV.\nMirroring pauses during video to keep the Pi fast and cool. Use the Remote tab to control playback.',
     player: '🎬 The media player is in front.\nUse the controls above.',
+    game: '🎮 A game is running on the TV.\nMirroring pauses during games so they run smoothly. Use the Remote tab to play.',
     offline: 'The TV browser isn\'t running yet…',
   };
-  $('#mirror-msg').textContent = reason ? msgs[reason] || '' : '';
+  $('#mirror-msg').textContent = reason && msgs[reason] ? t(msgs[reason]) : '';
   $('#mirror-msg').style.whiteSpace = 'pre-line';
 }
 (() => {
@@ -271,19 +273,19 @@ $$('#add-zoom button').forEach((b) => { b.onclick = () => { addZoom = Number(b.d
 function renderCustomList(apps) {
   const box = $('#add-list'); box.innerHTML = '';
   const mine = apps.filter((a) => a.custom);
-  if (mine.length) { const l = document.createElement('label'); l.className = 'lbl'; l.textContent = 'Installed apps'; box.append(l); }
+  if (mine.length) { const l = document.createElement('label'); l.className = 'lbl'; l.textContent = t('Installed apps'); box.append(l); }
   for (const a of mine) {
     const r = document.createElement('div'); r.className = 'row-app';
     const n = document.createElement('span'); n.textContent = a.name;
-    const x = document.createElement('button'); x.textContent = 'Remove';
+    const x = document.createElement('button'); x.textContent = t('Remove');
     x.onclick = async () => { const res = await call('removeApp', { id: a.id }); if (Array.isArray(res)) renderApps(res); };
     r.append(n, x); box.append(r);
   }
 }
 $('#add-go').onclick = async () => {
   const url = $('#add-url').value.trim(); const file = $('#add-file').files[0];
-  if (!url && !file) { $('#add-msg').textContent = 'Enter an address or choose a file.'; return; }
-  $('#add-msg').textContent = 'Installing…'; $('#add-go').disabled = true;
+  if (!url && !file) { $('#add-msg').textContent = t('Enter an address or choose a file.'); return; }
+  $('#add-msg').textContent = t('Installing…'); $('#add-go').disabled = true;
   try {
     let app;
     if (file) {
@@ -292,9 +294,9 @@ $('#add-go').onclick = async () => {
     } else {
       app = await call('installUrl', { url, scale: addZoom }); if (app.error) throw new Error(app.error);
     }
-    $('#add-msg').textContent = `✓ Installed “${app.name}”. It's on the TV home screen.`;
+    $('#add-msg').textContent = t('✓ Installed “{name}”. It\'s on the TV home screen.', { name: app.name });
     $('#add-url').value = ''; $('#add-file').value = '';
-  } catch (e) { $('#add-msg').textContent = 'Could not install: ' + e.message; }
+  } catch (e) { $('#add-msg').textContent = t('Could not install: {err}', { err: e.message }); }
   $('#add-go').disabled = false;
 };
 

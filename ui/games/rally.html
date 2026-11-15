@@ -49,23 +49,25 @@
 
 <div class="overlay" id="menu">
   <h1>Raspberry Rally</h1>
-  <div class="row-label active" id="lbl-driver">Choose your driver</div>
+  <div class="row-label active" id="lbl-driver" data-i18n>Choose your driver</div>
   <div class="select" id="drivers"></div>
-  <div class="row-label" id="lbl-track">Track</div>
+  <div class="row-label" id="lbl-track" data-i18n>Track</div>
   <div class="select" id="tracks"></div>
-  <p class="keys">◀ ▶ choose · ▲ ▼ switch row · <b>OK</b> start<br>The kart accelerates by itself: steer ◀ ▶, brake ▼, <b>OK</b> fires a turbo from an item box</p>
+  <p class="keys"><span data-i18n-html>◀ ▶ choose · ▲ ▼ switch row · <b>OK</b> start</span><br><span data-i18n-html>The kart accelerates by itself: steer ◀ ▶, brake ▼, <b>OK</b> fires a turbo from an item box</span></p>
 </div>
 
-<div class="overlay hidden" id="paused"><h1>Paused</h1><p>OK to continue · Back to exit</p></div>
+<div class="overlay hidden" id="paused"><h1 data-i18n>Paused</h1><p data-i18n>OK to continue · Back to exit</p></div>
 
 <div class="overlay hidden" id="finish">
   <h1 id="fin-title">1st place!</h1>
   <div class="results" id="fin-results"></div>
   <p id="fin-time"></p>
-  <p class="keys">OK: race again · ▲: menu · Back: exit</p>
+  <p class="keys" data-i18n>OK: race again · ▲: menu · Back: exit</p>
 </div>
 
+<script src="/shared/i18n.js"></script>
 <script src="common.js"></script>
+<script src="render.js"></script>
 <script>
 'use strict';
 // ------------------------------------------------------------------ constants
@@ -76,7 +78,7 @@ const PLAYER_Z = CAM_H * CAM_D;
 const MAX = SEG * 60;                // top speed (world units / s)
 const ACCEL = MAX / 4.5, BRAKE = -MAX, DECEL = -MAX / 5, OFFROAD_DECEL = -MAX / 1.6, OFFROAD_LIMIT = MAX / 3.2;
 const CENTRIFUGAL = 0.2, LAPS = 3, BOOST_MUL = 1.35;
-const C = PV.$('#c'); const ctx = C.getContext('2d');
+const C = PV.$('#c');
 
 const ease = { in: (a, b, p) => a + (b - a) * Math.pow(p, 2), inOut: (a, b, p) => a + (b - a) * ((-Math.cos(p * Math.PI) / 2) + 0.5) };
 const lerp = (a, b, p) => a + (b - a) * p;
@@ -213,7 +215,7 @@ const dist = (r) => r.laps * trackLen + r.z;
 function update(dt) {
   if (state === 'countdown') {
     countdown -= dt;
-    PV.$('#banner').textContent = countdown > 0.5 ? Math.ceil(countdown - 0.5) : 'GO!';
+    PV.$('#banner').textContent = countdown > 0.5 ? Math.ceil(countdown - 0.5) : t('GO!');
     if (countdown <= 0) { state = 'race'; setTimeout(() => { PV.$('#banner').textContent = ''; }, 600); }
     updateAI(dt, true);
     return;
@@ -269,7 +271,7 @@ function update(dt) {
   if (position < old) {
     lap++;
     if (lap > LAPS) return finishRace();
-    PV.$('#banner').textContent = lap === LAPS ? 'FINAL LAP' : `LAP ${lap}`;
+    PV.$('#banner').textContent = lap === LAPS ? t('FINAL LAP') : t('LAP {n}', { n: lap });
     setTimeout(() => { if (state === 'race') PV.$('#banner').textContent = ''; }, 1400);
   }
   pl.z = position + PLAYER_Z; pl.laps = lap - 1 + (pl.z >= trackLen ? 1 : 0); pl.z %= trackLen; pl.offset = playerX; pl.speed = speed;
@@ -317,9 +319,9 @@ function finishRace() {
   const place = finishOrder.indexOf(me) + 1;
   const best = PV.best('rally-' + trackIdx + '-time-inv', Math.round(1e6 / raceTime)); // store as inverse so "higher is better"
   PV.$('#banner').textContent = '';
-  PV.$('#fin-title').textContent = ['🏆 1st place!', '🥈 2nd place', '🥉 3rd place', '4th place'][place - 1];
+  PV.$('#fin-title').textContent = t(['🏆 1st place!', '🥈 2nd place', '🥉 3rd place', '4th place'][place - 1]);
   PV.$('#fin-results').innerHTML = finishOrder.map((d, i) => `<div class="${d === me ? 'me' : ''}">${i + 1}. ${DRIVERS[d].name}</div>`).join('');
-  PV.$('#fin-time').textContent = `Time ${fmt(raceTime)} · Best ${fmt(1e6 / best)} · 🍓 ${berries}`;
+  PV.$('#fin-time').textContent = t('Time {t} · Best {b} · 🍓 {n}', { t: fmt(raceTime), b: fmt(1e6 / best), n: berries });
   PV.$('#finish').classList.remove('hidden');
 }
 const fmt = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
@@ -332,28 +334,26 @@ function project(p, camX, camY, camZ) {
   p.screen.y = Math.round(H / 2 - p.screen.scale * p.camera.y * H / 2);
   p.screen.w = Math.round(p.screen.scale * ROAD_W * W / 2);
 }
-function poly(x1, y1, x2, y2, x3, y3, x4, y4, color) {
-  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4); ctx.closePath(); ctx.fill();
-}
-const hillLayer = (() => {
-  const c = document.createElement('canvas'); c.width = W * 2; c.height = 200; return c;
-})();
-function paintHills() {
-  const g = hillLayer.getContext('2d'); g.clearRect(0, 0, hillLayer.width, 200);
-  for (const [i, col] of track.hills.entries()) {
+// ---- GPU textures (atlas): every sprite drawn with the batch renderer
+const R = PVRender.create(C);
+const TEX = Object.fromEntries(Object.entries(SPR).map(([k, c]) => [k, R.texture(c)]));
+const KTEX = KARTS.map((c) => R.texture(c));
+const FLAME = R.texture(sprite(24, 48, (g) => { const gr = g.createRadialGradient(12, 14, 1, 12, 20, 22); gr.addColorStop(0, '#fff6c0'); gr.addColorStop(0.4, '#ffb300'); gr.addColorStop(1, 'rgba(255,80,0,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(12, 22, 10, 22, 0, 0, 7); g.fill(); }));
+const HILLS = TRACKS.map((t) => R.texture(sprite(W * 2, 200, (g) => {
+  for (const [i, col] of t.hills.entries()) {
     g.fillStyle = col; g.beginPath(); g.moveTo(0, 200);
-    for (let x = 0; x <= hillLayer.width; x += 16) g.lineTo(x, 110 - i * -40 + Math.sin(x / (110 + i * 60) * Math.PI) * (40 - i * 12) + Math.sin(x / 47) * 6);
-    g.lineTo(hillLayer.width, 200); g.fill();
+    for (let x = 0; x <= W * 2; x += 16) g.lineTo(x, 110 + i * 40 + Math.sin(x / (110 + i * 60) * Math.PI) * (40 - i * 12) + Math.sin(x / 47) * 6);
+    g.lineTo(W * 2, 200); g.fill();
   }
-}
-function drawSprite(img, wWorld, scale, x, y, offX, offY, clipY, flip) {
-  const dw = wWorld * scale * W / 2; const dh = dw * img.height / img.width;
+})));
+function paintHills() {} // hills are pre-rendered per track into the atlas
+
+function drawSprite(tex, wWorld, scale, x, y, offX, offY, clipY, flip, rot) {
+  const dw = wWorld * scale * W / 2; const dh = dw * tex.h / tex.w;
   const dx = x + dw * offX, dy = y + dh * offY;
   const clipH = clipY ? Math.max(0, dy + dh - clipY) : 0;
   if (clipH >= dh || dw < 1) return;
-  const sh = img.height - img.height * clipH / dh;
-  if (flip) { ctx.save(); ctx.translate(dx + dw, dy); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0, img.width, sh, 0, 0, dw, dh - clipH); ctx.restore(); }
-  else ctx.drawImage(img, 0, 0, img.width, sh, dx, dy, dw, dh - clipH);
+  R.image(tex, dx, dy, dw, dh - clipH, { sh: tex.h - tex.h * clipH / dh, flip, rot });
 }
 
 function render() {
@@ -361,11 +361,11 @@ function render() {
   const base = findSeg(position); const basePct = pctRemaining(position, SEG);
   const plSeg = findSeg(position + PLAYER_Z); const plPct = pctRemaining(position + PLAYER_Z, SEG);
   const playerY = lerp(plSeg.p1.world.y, plSeg.p2.world.y, plPct);
+  R.begin(track.sky[1]);
   // sky + parallax hills
-  const sky = ctx.createLinearGradient(0, 0, 0, H / 2); sky.addColorStop(0, track.sky[0]); sky.addColorStop(1, track.sky[1]);
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  R.grad(0, 0, W, H / 2 + 60, track.sky[0], track.sky[1]);
   const off = ((skyOff * W) % W + W) % W;
-  ctx.drawImage(hillLayer, off, 0, W, 200, 0, H / 2 - 150 + playerY / 400, W, 200);
+  R.image(HILLS[trackIdx], 0, H / 2 - 150 + playerY / 400, W, 200, { sx: off, sw: W });
 
   let maxy = H, x = 0, dx = -(base.curve * basePct);
   for (let n = 0; n < DRAW; n++) {
@@ -375,26 +375,28 @@ function render() {
     project(seg.p1, playerX * ROAD_W - x, playerY + CAM_H, position - (looped ? trackLen : 0));
     project(seg.p2, playerX * ROAD_W - x - dx, playerY + CAM_H, position - (looped ? trackLen : 0));
     x += dx; dx += seg.curve;
-    if (seg.p1.camera.z <= CAM_D || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxy) continue;
+    seg.fog = n > DRAW * 0.45 ? Math.min(0.85, (n / DRAW - 0.45) * 1.6) : 0;
+    if (seg.p1.camera.z <= CAM_D || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxy) { seg.vis = false; continue; }
+    seg.vis = true;
     const p1 = seg.p1.screen, p2 = seg.p2.screen; const pal = seg.dark ? track.dark : track.light;
-    ctx.fillStyle = pal.grass; ctx.fillRect(0, p2.y, W, p1.y - p2.y);
+    R.rect(0, p2.y, W, p1.y - p2.y, pal.grass);
     const r1 = p1.w / 6, r2 = p2.w / 6;
-    poly(p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, p2.y, p2.x - p2.w - r2, p2.y, pal.rumble);
-    poly(p1.x + p1.w + r1, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x + p2.w + r2, p2.y, pal.rumble);
-    poly(p1.x - p1.w, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x - p2.w, p2.y, (seg.start || seg.finish) ? (seg.dark ? '#fff' : '#222') : pal.road);
+    R.quad(p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, p2.y, p2.x - p2.w - r2, p2.y, pal.rumble);
+    R.quad(p1.x + p1.w + r1, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x + p2.w + r2, p2.y, pal.rumble);
+    R.quad(p1.x - p1.w, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x - p2.w, p2.y, (seg.start || seg.finish) ? (seg.dark ? '#fff' : '#222') : pal.road);
     if (seg.boost != null) {
       const bx1 = p1.x + seg.boost * p1.w, bx2 = p2.x + seg.boost * p2.w, bw1 = p1.w * 0.22, bw2 = p2.w * 0.22;
-      poly(bx1 - bw1, p1.y, bx1 + bw1, p1.y, bx2 + bw2, p2.y, bx2 - bw2, p2.y, seg.dark ? '#ffb300' : '#ff6a00');
+      R.quad(bx1 - bw1, p1.y, bx1 + bw1, p1.y, bx2 + bw2, p2.y, bx2 - bw2, p2.y, seg.dark ? '#ffb300' : '#ff6a00');
     }
     if (pal.lane && !seg.start) {
       const l1 = p1.w / 40, l2 = p2.w / 40;
-      for (const lx of [-1 / 3, 1 / 3]) poly(p1.x + lx * 2 * p1.w - l1 / 2, p1.y, p1.x + lx * 2 * p1.w + l1 / 2, p1.y, p2.x + lx * 2 * p2.w + l2 / 2, p2.y, p2.x + lx * 2 * p2.w - l2 / 2, p2.y, pal.lane);
+      for (const lx of [-1 / 3, 1 / 3]) R.quad(p1.x + lx * 2 * p1.w - l1 / 2, p1.y, p1.x + lx * 2 * p1.w + l1 / 2, p1.y, p2.x + lx * 2 * p2.w + l2 / 2, p2.y, p2.x + lx * 2 * p2.w - l2 / 2, p2.y, pal.lane);
     }
-    if (n > DRAW * 0.45) { ctx.globalAlpha = Math.min(0.85, (n / DRAW - 0.45) * 1.6); ctx.fillStyle = track.fog; ctx.fillRect(0, p2.y, W, p1.y - p2.y); ctx.globalAlpha = 1; }
+    if (seg.fog) R.rect(0, p2.y, W, p1.y - p2.y, FOG(seg.fog));
     maxy = p1.y;
   }
 
-  // karts per segment
+  // scenery + karts, back to front
   const bySeg = new Map();
   for (const r of racers) { if (r.player) continue; const s = findSeg(r.z); (bySeg.get(s.index) || bySeg.set(s.index, []).get(s.index)).push(r); }
   for (let n = DRAW - 1; n > 0; n--) {
@@ -404,14 +406,14 @@ function render() {
       if (sp.pickup && sp.taken >= 0) continue;
       const sc = seg.p1.screen.scale;
       const sx = seg.p1.screen.x + sc * sp.offset * ROAD_W * W / 2;
-      drawSprite(SPR[sp.s], SW[sp.s], sc, sx, seg.p1.screen.y, sp.pickup ? -0.5 : (sp.offset < 0 ? -1 : 0), -1, seg.clip, sp.flip);
+      drawSprite(TEX[sp.s], SW[sp.s], sc, sx, seg.p1.screen.y, sp.pickup ? -0.5 : (sp.offset < 0 ? -1 : 0), -1, seg.clip, sp.flip);
     }
     for (const r of bySeg.get(seg.index) || []) {
       const pct = pctRemaining(r.z, SEG);
       const sc = lerp(seg.p1.screen.scale, seg.p2.screen.scale, pct);
       const sx = lerp(seg.p1.screen.x, seg.p2.screen.x, pct) + sc * r.offset * ROAD_W * W / 2;
       const sy = lerp(seg.p1.screen.y, seg.p2.screen.y, pct);
-      drawSprite(KARTS[r.drv], SW.kart, sc, sx, sy, -0.5, -1, seg.clip);
+      drawSprite(KTEX[r.drv], SW.kart, sc, sx, sy, -0.5, -1, seg.clip);
     }
   }
 
@@ -420,24 +422,27 @@ function render() {
     const sc = CAM_D / PLAYER_Z;
     const bounce = (shake ? (Math.random() - 0.5) * shake * 2 : 0) + (speed > 0 ? Math.sin(raceTime * 30) * 0.6 : 0);
     const tilt = PV.held('left') ? -0.07 : PV.held('right') ? 0.07 : 0;
-    ctx.save(); ctx.translate(W / 2, H - 6 + bounce); ctx.rotate(tilt);
-    drawSprite(KARTS[me], SW.kart, sc, 0, 0, -0.5, -1, 0);
-    if (boostT > 0) { ctx.fillStyle = `rgba(255,${150 + Math.random() * 100},0,0.9)`; ctx.beginPath(); ctx.ellipse(-14, -14, 6, 10 + Math.random() * 10, 0, 0, 7); ctx.ellipse(14, -14, 6, 10 + Math.random() * 10, 0, 0, 7); ctx.fill(); }
-    ctx.restore();
+    const kw = SW.kart * sc * W / 2, kh = kw * KTEX[me].h / KTEX[me].w;
+    if (boostT > 0) for (const fx of [-0.12, 0.12]) { const fh = kh * (0.35 + Math.random() * 0.25); R.image(FLAME, W / 2 + fx * kw - kh * 0.08, H - 6 + bounce - kh * 0.2, kh * 0.16, fh); }
+    R.image(KTEX[me], W / 2 - kw / 2, H - 6 + bounce - kh, kw, kh, { rot: tilt });
   }
+  R.end();
   hud();
 }
+const fogCache = new Map();
+function FOG(a) { const k = Math.round(a * 20); let c = fogCache.get(k + track.fog); if (!c) { const f = PVRenderColor(track.fog); c = [f[0], f[1], f[2], k / 20]; fogCache.set(k + track.fog, c); } return c; }
+function PVRenderColor(hex) { const h = hex.slice(1); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); }
 
 let lastHud = '';
 function hud() {
   if (state === 'menu') return;
   const place = placeOf(me);
-  const sfx = ['st', 'nd', 'rd', 'th'][place - 1];
+  const sfx = PVI18N.lang === 'tr' ? '.' : ['st', 'nd', 'rd', 'th'][place - 1];
   const kmh = Math.round(speed / MAX * 160);
   const key = [place, lap, Math.floor(raceTime * 10), berries, turbos, kmh, boostT > 0].join();
   if (key === lastHud) return; lastHud = key;
   PV.$('#pos').innerHTML = `${place}<small>${sfx}</small> <small>/ 4</small>`;
-  PV.$('#lap').textContent = `Lap ${Math.min(lap, LAPS)}/${LAPS}`;
+  PV.$('#lap').textContent = t('Lap {a}/{b}', { a: Math.min(lap, LAPS), b: LAPS });
   PV.$('#time').textContent = fmt(raceTime);
   PV.$('#berries').textContent = `🍓 ${berries}`;
   PV.$('#speedo').innerHTML = `${kmh}${boostT > 0 ? ' 🔥' : ''} <small>km/h</small>`;
@@ -450,10 +455,10 @@ function renderMenu() {
   DRIVERS.forEach((d, i) => {
     const c = document.createElement('div'); c.className = 'card' + (i === me ? ' sel' : '');
     const cv = document.createElement('canvas'); cv.width = 128; cv.height = 96; cv.getContext('2d').drawImage(KARTS[i], 0, 0);
-    c.append(cv); c.insertAdjacentHTML('beforeend', `<div class="n">${d.name}</div><div class="d">${d.desc}</div>`);
+    c.append(cv); c.insertAdjacentHTML('beforeend', `<div class="n">${d.name}</div><div class="d">${t(d.desc)}</div>`);
     PV.$('#drivers').append(c);
   });
-  PV.$('#tracks').innerHTML = TRACKS.map((t, i) => `<div class="track ${i === trackIdx ? 'sel' : ''}">${t.name}</div>`).join('');
+  PV.$('#tracks').innerHTML = TRACKS.map((tr, i) => `<div class="track ${i === trackIdx ? 'sel' : ''}">${t(tr.name)}</div>`).join('');
   PV.$('#lbl-driver').classList.toggle('active', menuRow === 0); PV.$('#lbl-track').classList.toggle('active', menuRow === 1);
   buildTrack(TRACKS[trackIdx]); paintHills();
 }

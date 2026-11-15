@@ -58,7 +58,8 @@ while true; do
     --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --remote-allow-origins=http://127.0.0.1 \
     --noerrdialogs --disable-infobars --no-first-run --no-default-browser-check \
     --disable-session-crashed-bubble --disable-translate --password-store=basic \
-    --disable-features=Translate,MediaRouter,OptimizationHints,InterestFeedContentSuggestions \
+    --disable-features=Translate,MediaRouter,OptimizationHints,InterestFeedContentSuggestions,DisableLoadExtensionCommandLineSwitch \
+    --load-extension=/opt/pivista/system/zoom-extension \
     --enable-features=OverlayScrollbar \
     "${GPU_FLAGS[@]}" \
     --force-device-scale-factor=1 --hide-scrollbars --overscroll-history-navigation=0 \

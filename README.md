@@ -5,6 +5,7 @@
 **Turn any HDMI monitor into a smart TV with a Raspberry Pi 4. Your phone is the remote.**
 
 - 📺 10-foot TV interface (1080p) with an animated raspberry opening screen
+- 🌍 **English and Türkçe**: Settings → Language switches the TV, every paired phone and the games
 - ▶️ YouTube (TV layout), Netflix, HBO Max and Disney+ via their official web players (Widevine DRM), each zoomed to suit a TV
 - 🚫 Optional **YouTube ad blocker** (off by default, so YouTube Premium is never affected)
 - 📱 Phone remote at **http://pivista.local**: pair by scanning the dot pattern on the TV. No app to install, no mouse, no keyboard.
@@ -46,7 +47,9 @@ More in [`docs/screenshots`](docs/screenshots).
 | **Brick Blaster** | Paddle-and-ball brick breaker with levels | Hold ◀ ▶ · OK launch |
 | **Berry Merge** | Slide-and-merge number puzzle (reach 2048) | Arrows · ⏯ restart |
 
-Back always returns to the Games list, and best scores are saved on the Pi. Games render on a canvas with a fixed timestep, so they run at the same speed on a busy Pi.
+Back always returns to the Games list, and best scores are saved on the Pi.
+
+**Smooth on a Pi:** the games draw with WebGL through a small batch renderer (`ui/games/render.js`). Every road strip, sprite and rectangle of a frame goes into one buffer and is drawn in a single GPU call from one texture atlas. If only software WebGL is available (e.g. Chromium in safe mode), they switch to Canvas 2D automatically. Screen mirroring to the phone pauses while a game runs, and the game logic uses a fixed timestep, so speed doesn't depend on frame rate.
 
 ---
 
@@ -202,6 +205,7 @@ Common findings:
 | `lightdm … is running` | The desktop login is taking the screen: `sudo systemctl disable --now lightdm && sudo pivista restart` |
 | `no monitor detected` | Use the HDMI port **next to the USB-C power port**, check the cable and the monitor's input, then `sudo pivista restart` |
 | `chromium missing` | `sudo apt install chromium-browser` (on newer OS versions: `chromium`) |
+| Netflix/Max/Disney+ only fill part of the screen (white area) | Fixed in 0.4.0: update. The kiosk loads the zoom extension, so run `sudo pivista restart` after updating |
 | Log shows `Chromium crashed … safe mode` | A GPU driver problem: PiVista falls back to software rendering automatically. To force it, add `PIVISTA_CHROMIUM_FLAGS="--disable-gpu"` to `/etc/default/pivista`, then `sudo pivista restart` |
 
 The screen adapts to whatever resolution the monitor accepts (1080p is preferred; 720p and 4K screens are scaled to fit).
@@ -246,7 +250,7 @@ sudo /opt/pivista/scripts/uninstall.sh --purge
 - **Stack:** Node.js (2 small dependencies: `ws` and `qrcode`) and plain HTML/CSS/JS. Nothing to compile, so it's easy to hack on.
 - **Display:** [cage](https://github.com/cage-kiosk/cage) is a minimal Wayland compositor that runs one app full screen. No desktop runs in the background, which leaves more RAM and GPU for video.
 - **Remote input:** the server injects key presses, text and pointer events straight into Chromium over the DevTools Protocol. That works the same on PiVista's own UI and on Netflix/YouTube, with no fake input devices.
-- **Correct sizing per app:** desktop sites render at `1920/zoom × 1080/zoom` CSS pixels with a matching device pixel ratio, so they fill 1080p sharply with TV-sized text. Netflix, Max and Disney+ use 150%, the browser uses 125%, and YouTube's TV layout uses 100% because it's already built for TVs.
+- **Correct sizing per app:** each app gets real browser zoom (like pressing Ctrl and + in Chrome), so the page re-lays itself out and fills the whole screen with TV-sized text. A tiny built-in Chromium extension (`system/zoom-extension`) asks the server (`/api/zoom`) for the right zoom on every page load. Netflix, Max and Disney+ use 150%, the browser uses 125%, and YouTube's TV layout uses 100% because it's already built for TVs.
 - **Streaming apps:** each one opens its official web player with a suitable user agent. YouTube gets the TV ("Leanback") layout, built for D-pad navigation. Netflix, Max and Disney+ get a Chrome OS user agent, which unlocks Widevine HD. Change these in `server/apps.js`.
 - **Pairing:** the TV shows a one-time 6-digit code as a dot pattern (a QR code drawn with round dots) pointing to `http://pivista.local/#pair=CODE`. The phone trades the code for a long-lived device token. Only the TV itself can read the pattern endpoint. Codes rotate every 5 minutes and work only once.
 
@@ -273,7 +277,7 @@ sudo /opt/pivista/scripts/uninstall.sh --purge
 ### Overheat protection
 
 1. **Firmware:** `temp_limit=82` (default 85 °C).
-2. **PiVista thermal guard** (`server/thermal.js`) checks the SoC temperature every 5 s. At the limit set in Settings (default 80 °C) it caps the CPU at 1.2 GHz, and at limit + 5 °C at 1.0 GHz. It restores full speed below limit − 10 °C and shows a notice on screen (including on top of Netflix/YouTube).
+2. **PiVista thermal guard** (`server/thermal.js`) checks the SoC temperature every 30 s (every 10 s once it's within 5 °C of the limit). At the limit set in Settings (default 80 °C) it caps the CPU at 1.2 GHz, and at limit + 5 °C at 1.0 GHz. It restores full speed below limit − 10 °C and shows a notice on screen (including on top of Netflix/YouTube).
 3. **Under-voltage detection** through `vcgencmd get_throttled`, with an on-screen warning.
 4. Optional lines in `config.txt` for a GPIO fan (`dtoverlay=gpio-fan`) and to drop the 1.8 GHz boost (`arm_boost=0`) on passively cooled boards.
 
@@ -304,7 +308,9 @@ server/   Node.js server: index.js (HTTP/WS + routing, mirror), cdp.js (browser 
           player.js (mpv), system.js (hardware), thermal.js, apps.js (app catalog), config.js,
           adblock.js (YouTube ad blocker), userapps.js (installed apps)
 ui/shared logo + app icons
-ui/games  built-in games (common.js: input/loop helpers; one HTML file per game)
+ui/games  built-in games (common.js: input/loop helpers, render.js: WebGL batch renderer; one HTML file per game)
+ui/shared logo, app icons, i18n.js (English/Türkçe)
+system/zoom-extension  Chromium extension applying per-app TV zoom
 ui/tv/    TV interface (splash, spatial navigation, system apps)
 ui/remote Phone remote (PWA)
 system/   systemd units, kiosk launcher (start-kiosk.sh → cage → kiosk.sh → Chromium), doctor, boot config, CLI
@@ -318,7 +324,7 @@ packaging Debian package build
 
 `.github/workflows/build.yml` runs on every push (any branch, including `claude/kind-mccarthy-xql5k2`) and on pull requests. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
 
-## Known limitations (v0.3.1)
+## Known limitations (v0.4)
 
 - Streaming services can change their web apps or block unusual user agents at any time. If one breaks, try a different user agent in `server/apps.js`.
 - Netflix/Max/Disney+ web players are made for mouse use. Use the D-pad where it works and the touchpad tab for the rest.

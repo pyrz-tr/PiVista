@@ -4,9 +4,9 @@
 <style>
   #board { position: absolute; left: 50%; top: 54%; transform: translate(-50%, -50%); width: 760px; height: 760px; background: #2a1830; border-radius: 28px; padding: 20px; }
   .tile { position: absolute; width: 167px; height: 167px; border-radius: 18px; display: flex; align-items: center; justify-content: center;
-    font-weight: 900; font-size: 64px; transition: left .12s ease, top .12s ease; }
+    font-weight: 900; font-size: 64px; left: 0; top: 0; transition: transform .12s ease; will-change: transform; }
   .tile.new { animation: pop .18s ease; } .tile.merged { animation: pop .2s ease; }
-  @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes pop { 0% { scale: .6; } 60% { scale: 1.12; } 100% { scale: 1; } }
   .cell { position: absolute; width: 167px; height: 167px; border-radius: 18px; background: #ffffff0d; }
   #title { position: absolute; top: 40px; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 900; margin: 0;
     background: linear-gradient(90deg, #ff4d8d, #a855f7); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -15,10 +15,11 @@
 </style></head>
 <body>
 <h1 id="title">Berry Merge</h1>
-<div id="help">Slide with ◀ ▶ ▲ ▼.<br>Matching numbers merge.<br>Reach <b>2048</b> to win the golden berry!<br><br>⏯ Play: restart<br>Back: exit</div>
+<div id="help" data-i18n-html>Slide with ◀ ▶ ▲ ▼.<br>Matching numbers merge.<br>Reach <b>2048</b> to win the golden berry!<br><br>⏯ Play: restart<br>Back: exit</div>
 <div id="side"><div id="score">Score 0</div><div id="best">Best 0</div></div>
 <div id="board"></div>
-<div class="overlay hidden" id="ov"><h1 id="ov-title">Game over</h1><p class="big" id="ov-msg"></p><p class="keys">OK: new game · Back: exit</p></div>
+<div class="overlay hidden" id="ov"><h1 id="ov-title">Game over</h1><p class="big" id="ov-msg"></p><p class="keys" data-i18n>OK: new game · Back: exit</p></div>
+<script src="/shared/i18n.js"></script>
 <script src="common.js"></script>
 <script>
 'use strict';
@@ -53,8 +54,8 @@ function move(dir) {
   }
   if (moved) spawn();
   draw();
-  if (!canMove()) { over = true; PV.best('merge', score); PV.$('#ov-title').textContent = 'Game over'; PV.$('#ov-msg').textContent = `${score} points`; PV.$('#ov').classList.remove('hidden'); }
-  else if (grid.flat().some((t) => t && t.v === 2048) && !won) { won = true; PV.$('#ov-title').textContent = '🏆 Golden berry!'; PV.$('#ov-msg').textContent = 'You reached 2048'; PV.$('#ov').classList.remove('hidden'); }
+  if (!canMove()) { over = true; PV.best('merge', score); PV.$('#ov-title').textContent = t('Game over'); PV.$('#ov-msg').textContent = t('{n} points', { n: score }); PV.$('#ov').classList.remove('hidden'); }
+  else if (grid.flat().some((t) => t && t.v === 2048) && !won) { won = true; PV.$('#ov-title').textContent = t('🏆 Golden berry!'); PV.$('#ov-msg').textContent = t('You reached 2048'); PV.$('#ov').classList.remove('hidden'); }
 }
 let won = false;
 function canMove() {
@@ -69,12 +70,12 @@ function draw() {
     let el = document.getElementById('t' + t.id);
     if (!el) { el = document.createElement('div'); el.id = 't' + t.id; board.append(el); }
     el.className = 'tile' + (t.isNew ? ' new' : '') + (t.merged ? ' merged' : '');
-    el.style.left = 20 + x * (S + GAP) + 'px'; el.style.top = 20 + y * (S + GAP) + 'px';
+    el.style.transform = `translate(${20 + x * (S + GAP)}px, ${20 + y * (S + GAP)}px)`;
     el.style.background = COL[t.v] || '#111'; el.style.color = t.v <= 8 ? '#5a1033' : '#fff'; el.style.fontSize = t.v >= 1024 ? '48px' : '64px';
     el.textContent = t.v;
   }));
   [...board.querySelectorAll('.tile')].forEach((e) => { if (!keep.has(e.id)) e.remove(); });
-  PV.$('#score').textContent = `Score ${score}`; PV.$('#best').textContent = `Best ${Math.max(PV.best('merge'), score)}`;
+  PV.$('#score').textContent = t('Score {n}', { n: score }); PV.$('#best').textContent = t('Best {n}', { n: Math.max(PV.best('merge'), score) });
 }
 PV.onPress((k) => {
   const shown = !PV.$('#ov').classList.contains('hidden');

@@ -164,19 +164,20 @@ window.addEventListener('hashchange', () => {
   if (id === 'home') { stack.length = 0; show('home', false); } else show(id);
 });
 
+const appName = (app) => (app.type === 'system' ? t(app.name) : app.name);
 function tile(app, small) {
   const t = el('div', 'tile focusable' + (small ? ' small' : '')); t.tabIndex = 0;
   const c = app.color || '#333';
   t.style.background = `linear-gradient(145deg, ${c}, ${c}aa 60%, #0006)`;
   if (app.icon) { const i = el('img', 'icon'); i.src = app.icon; i.alt = ''; i.onerror = () => { i.replaceWith(el('div', 'letter', app.name[0])); }; t.append(i); }
   else t.append(el('div', 'letter', (app.letter || app.name[0] || '?')));
-  t.append(el('div', 'name', app.name));
+  t.append(el('div', 'name', appName(app)));
   t.onclick = () => openApp(app);
   return t;
 }
 function openApp(app) {
   if (app.type === 'system') return show(app.id);
-  toast(`Opening ${app.name}…`);
+  toast(t('Opening {name}…', { name: appName(app) }));
   rpc.call('launch', { id: app.id });
 }
 function item(label, val, onclick, cls) {
@@ -201,20 +202,20 @@ screens.media = {
     await this.load(this.dir, true);
     const rec = (await rpc.call('mediaRecent')) || [];
     const box = $('#media-recent'); box.innerHTML = '';
-    if (!rec.length) box.append(el('div', 'item empty', 'Nothing played yet'));
+    if (!rec.length) box.append(el('div', 'item empty', t('Nothing played yet')));
     rec.forEach((r) => box.append(item('▶  ' + r.name, '', () => rpc.call('mediaPlay', { path: r.path }))));
   },
   async load(dir, keep) {
     if (!keep && dir !== this.dir && dir) this.trail.push(this.dir);
     this.dir = dir;
-    $('#media-path').textContent = dir || 'Videos, music and USB drives · 4K files play in 4K';
+    $('#media-path').textContent = dir || t('Videos, music and USB drives · 4K files play in 4K');
     const items = (await rpc.call('mediaList', { dir })) || [];
     const list = $('#media-list'); list.innerHTML = '';
-    if (dir) list.append(item('⬑  Up', '', () => this.load(this.trail.pop() || null, true).then(focusFirst)));
-    if (!items.length) list.append(el('div', 'item empty', dir ? 'Empty folder' : 'No media yet: copy files to ~/Videos or plug in a USB drive'));
+    if (dir) list.append(item('⬑  ' + t('Up'), '', () => this.load(this.trail.pop() || null, true).then(focusFirst)));
+    if (!items.length) list.append(el('div', 'item empty', dir ? t('Empty folder') : t('No media yet: copy files to ~/Videos or plug in a USB drive')));
     const size = (b) => (b > 1e9 ? (b / 1e9).toFixed(1) + ' GB' : b > 1e6 ? Math.round(b / 1e6) + ' MB' : '');
     for (const it of items) {
-      list.append(item((it.dir ? '📁  ' : /\.(mp3|flac|m4a|aac|ogg|opus|wav)$/i.test(it.name) ? '🎵  ' : '🎬  ') + it.name, it.dir ? 'Folder' : size(it.size),
+      list.append(item((it.dir ? '📁  ' : /\.(mp3|flac|m4a|aac|ogg|opus|wav)$/i.test(it.name) ? '🎵  ' : '🎬  ') + it.name, it.dir ? t('Folder') : size(it.size),
         () => (it.dir ? this.load(it.path).then(focusFirst) : rpc.call('mediaPlay', { path: it.path }))));
     }
   },
@@ -236,7 +237,7 @@ screens.browser = {
       row.append(t);
     });
     const hist = $('#browser-history'); hist.innerHTML = '';
-    if (!d.history.length) hist.append(el('div', 'item empty', 'No recent pages'));
+    if (!d.history.length) hist.append(el('div', 'item empty', t('No recent pages')));
     d.history.slice(0, 6).forEach((h) => hist.append(item(h.url.replace(/^https?:\/\//, ''), '', () => rpc.call('launch', { id: 'url', url: h.url }))));
   },
 };
@@ -257,11 +258,11 @@ screens.games = {
     for (const g of GAMES) {
       const c = el('div', 'game-card focusable'); c.tabIndex = 0;
       const img = el('img'); img.src = `/games/covers/${g.id}.svg`; img.alt = '';
-      const t = el('div'); t.append(el('h3', '', g.name), el('p', '', g.desc));
+      const t = el('div'); t.append(el('h3', '', g.name), el('p', '', PVI18N.t(g.desc)));
       let best = 0; try { best = Number(localStorage.getItem('pv-best-' + g.best)) || 0; } catch (_) {}
-      if (best) t.append(el('div', 'best', g.id === 'rally' ? `🏆 Best time ${(1e6 / best).toFixed(1)} s` : `🏆 Best ${best}`));
+      if (best) t.append(el('div', 'best', g.id === 'rally' ? PVI18N.t('🏆 Best time {t} s', { t: (1e6 / best).toFixed(1) }) : PVI18N.t('🏆 Best {n}', { n: best })));
       c.append(img, t);
-      c.onclick = () => { location.href = `/games/${g.id}.html`; };
+      c.onclick = () => { location.href = `/games/${g.id}.html?lang=${PVI18N.lang}`; };
       box.append(c);
     }
   },
@@ -273,19 +274,19 @@ screens.addapp = {
   enter() {
     const list = $('#custom-list'); list.innerHTML = '';
     const mine = apps.filter((a) => a.custom);
-    if (!mine.length) list.append(el('div', 'item empty', 'No apps installed yet'));
-    mine.forEach((a) => list.append(item(a.name, 'Remove', async () => {
-      await rpc.call('removeApp', { id: a.id }); toast(`${a.name} removed`); await loadApps(); this.enter(); focusFirst();
+    if (!mine.length) list.append(el('div', 'item empty', t('No apps installed yet')));
+    mine.forEach((a) => list.append(item(a.name, t('Remove'), async () => {
+      await rpc.call('removeApp', { id: a.id }); toast(t('{name} removed', { name: a.name })); await loadApps(); this.enter(); focusFirst();
     }, 'danger')));
   },
 };
 $$('#app-zoom .chip').forEach((c) => { c.onclick = () => { zoom = Number(c.dataset.z); $$('#app-zoom .chip').forEach((x) => x.classList.toggle('active', x === c)); }; });
 async function installFromField() {
   const v = $('#app-url').value.trim(); if (!v) { $('#app-url').focus(); return; }
-  $('#app-msg').textContent = 'Installing…';
+  $('#app-msg').textContent = t('Installing…');
   const r = await rpc.call('installUrl', { url: v, scale: zoom }, 20000);
-  if (!r || r.error) { $('#app-msg').textContent = 'Could not install: ' + ((r && r.error) || 'timeout'); return; }
-  $('#app-msg').textContent = `Installed “${r.name}”. Find it on the home screen.`;
+  if (!r || r.error) { $('#app-msg').textContent = t('Could not install: {err}', { err: (r && r.error) || 'timeout' }); return; }
+  $('#app-msg').textContent = t('Installed “{name}”. Find it on the home screen.', { name: r.name });
   $('#app-url').value = ''; await loadApps(); screens.addapp.enter();
 }
 $('#app-install').onclick = installFromField;
@@ -294,7 +295,7 @@ $('#app-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') instal
 // ---------- System Info
 screens.system = {
   timer: null,
-  async enter() { await this.refresh(); this.timer = setInterval(() => this.refresh(), 2000); },
+  async enter() { await this.refresh(); this.timer = setInterval(() => this.refresh(), 5000); },
   leave() { clearInterval(this.timer); },
   async refresh() {
     const i = await rpc.call('info'); if (!i) return;
@@ -303,11 +304,11 @@ screens.system = {
       ['Model', i.model], ['Hostname', i.hostname + '.local'], ['IP address', i.ip.join(', ') || '—'], ['PiVista', 'v' + i.version],
       ['Temperature', i.tempC != null ? i.tempC + ' °C' : '—'], ['CPU clock', i.cpuFreqMHz ? Math.round(i.cpuFreqMHz) + ' MHz' : '—'],
       ['Load', i.load.join('  ')], ['Memory free', `${i.memFreeMB} / ${i.memTotalMB} MB`],
-      ['Power', th ? (th.underVoltage ? '⚠ Under-voltage' : th.underVoltageOccurred ? 'Under-voltage occurred' : 'OK') : '—'],
-      ['Throttling', th ? (th.throttled ? 'Active' : th.softTempLimit ? 'Soft temp limit' : 'None') : '—'], ['Uptime', i.uptimeH + ' h'],
+      ['Power', th ? (t(th.underVoltage ? '⚠ Under-voltage' : th.underVoltageOccurred ? 'Under-voltage occurred' : 'OK')) : '—'],
+      ['Throttling', th ? (t(th.throttled ? 'Active' : th.softTempLimit ? 'Soft temp limit' : 'None')) : '—'], ['Uptime', i.uptimeH + ' h'],
     ];
     const box = $('#stats'); box.innerHTML = '';
-    rows.forEach(([k, v]) => { const s = el('div', 'stat'); s.append(el('div', 'k', k), el('div', 'v', v)); box.append(s); });
+    rows.forEach(([k, v]) => { const s = el('div', 'stat'); s.append(el('div', 'k', t(k)), el('div', 'v', v)); box.append(s); });
   },
 };
 
@@ -322,7 +323,7 @@ screens.pair = {
       $('#pair-url').textContent = p.url.split('/#')[0].replace('http://', '');
       $('#direct').style.display = p.ipUrl ? '' : 'none';
       if (p.ipUrl) { $('#pattern-ip').src = '/api/pair/pattern.svg?via=ip&' + Date.now(); $('#pair-ip').textContent = p.ips[0]; }
-      $('#pair-devices').textContent = p.devices.length ? `Paired: ${p.devices.map((d) => d.name).join(', ')}` : 'No remotes paired yet';
+      $('#pair-devices').textContent = p.devices.length ? t('Paired: {list}', { list: p.devices.map((d) => d.name).join(', ') }) : t('No remotes paired yet');
     };
     await load();
     this.timer = setInterval(load, 4 * 60 * 1000);
@@ -335,18 +336,19 @@ screens.settings = {
   async enter() {
     settings = (await rpc.call('settings')) || settings;
     const p = await rpc.call('pairInfo');
-    const yes = (v) => (v ? 'On' : 'Off');
+    const yes = (v) => t(v ? 'On' : 'Off');
     const cycle = (key, opts) => () => this.set({ [key]: opts[(opts.indexOf(settings[key]) + 1) % opts.length] });
-    const withHint = (t, h) => { const s = el('span', '', t); s.append(el('span', 'hint', h)); return [s]; };
+    const withHint = (a, h) => { const s = el('span', '', t(a)); s.append(el('span', 'hint', t(h))); return [s]; };
     const rows = [
+      ['Language', (PVI18N.languages.find((l) => l.id === (settings.language || 'en')) || {}).name, cycle('language', PVI18N.languages.map((l) => l.id))],
       ['Start PiVista on boot', yes(settings.autostart), () => this.set({ autostart: !settings.autostart })],
       [withHint('Block YouTube ads', 'Turn off if you have YouTube Premium or anything misbehaves'), yes(settings.youtubeAdblock), () => this.set({ youtubeAdblock: !settings.youtubeAdblock })],
       ['Allow 4K output for media player', yes(settings.allow4k), () => this.set({ allow4k: !settings.allow4k })],
       ['Opening animation', yes(settings.showSplash), () => this.set({ showSplash: !settings.showSplash })],
-      ['Screensaver after', settings.screensaverMinutes ? settings.screensaverMinutes + ' min' : 'Never', cycle('screensaverMinutes', [5, 15, 30, 60, 0])],
+      ['Screensaver after', settings.screensaverMinutes ? t('{n} min', { n: settings.screensaverMinutes }) : t('Never'), cycle('screensaverMinutes', [5, 15, 30, 60, 0])],
       ['CPU slow-down temperature', settings.thermalLimitC + ' °C', cycle('thermalLimitC', [70, 75, 80])],
       ['Pair a new remote', '', () => show('pair')],
-      ['Forget all paired remotes', `${p ? p.devices.length : 0} paired`, async () => { await rpc.call('forget', {}); toast('All remotes removed'); this.enter(); }],
+      ['Forget all paired remotes', t('{n} paired', { n: p ? p.devices.length : 0 }), async () => { await rpc.call('forget', {}); toast(t('All remotes removed')); this.enter(); }],
       ['Restart interface', '', () => rpc.call('power', { v: 'restart-ui' })],
       ['Reboot', '', () => rpc.call('power', { v: 'reboot' }), 'danger'],
       ['Shut down', '', () => rpc.call('power', { v: 'shutdown' }), 'danger'],
@@ -354,7 +356,7 @@ screens.settings = {
     const focusedIdx = $$('#settings-list .item').indexOf(document.activeElement);
     const list = $('#settings-list'); list.innerHTML = '';
     rows.forEach(([label, val, fn, cls], n) => {
-      const i = item(label, val, fn, cls); list.append(i);
+      const i = item(typeof label === 'string' ? t(label) : label, val, fn, cls); list.append(i);
       if (n === focusedIdx) setTimeout(() => i.focus({ preventScroll: true }));
     });
   },
@@ -371,7 +373,7 @@ function tick() {
   const hh = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   $('#clock').textContent = hh; $('#ss-clock').textContent = hh;
   const h = d.getHours();
-  $('#greeting').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  $('#greeting').textContent = t(h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
 }
 let idle = 0;
 setInterval(() => {
@@ -395,15 +397,24 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('click', (e) => { const a = e.target.closest('[data-action="back"]'); if (a) back(); });
 
+let remoteCount = 0;
+// Language follows Settings → Language (stored on the server, shared with phones and games)
+function setLanguage(l) {
+  if (!PVI18N.set(l || 'en')) return;
+  tick(); setRemotes(remoteCount); renderHome();
+  const cur = $('.screen.active');
+  if (cur && screens[cur.id] && screens[cur.id].enter && cur.id !== 'home') Promise.resolve(screens[cur.id].enter()).then(() => {});
+}
 function setRemotes(n) {
-  $('#remote-status').textContent = n ? `${n} remote${n > 1 ? 's' : ''}` : 'No remote';
+  $('#remote-status').textContent = n ? t(n > 1 ? '{n} remotes' : '{n} remote', { n }) : t('No remote');
+  remoteCount = n;
   $('#remote-status').className = 'pill' + (n ? ' ok' : '');
 }
 rpc.on((m) => {
-  if (m.t === 'hello' || m.t === 'settings') settings = m.settings;
+  if (m.t === 'hello' || m.t === 'settings') { settings = m.settings; setLanguage(settings.language); }
   if (m.t === 'apps') { apps = m.apps; renderHome(); }
   if (m.t === 'paired') {
-    toast(`📱 ${m.name} connected as remote`);
+    toast(t('📱 {name} connected as remote', { name: m.name }));
     rpc.call('pairInfo').then((p) => p && setRemotes(p.devices.length));
     if ($('#pair.active')) back();
   }
@@ -417,12 +428,12 @@ async function refreshStatus() {
   // direct address, always visible: the fallback when pivista.local doesn't resolve
   $('#ip').textContent = i.ip.length ? i.ip[0] + (location.port && location.port !== '80' ? ':' + location.port : '') : '';
 }
-setInterval(refreshStatus, 10000);
+setInterval(refreshStatus, 30000);
 
 // ---------------------------------------------------------------- boot
 (async () => {
   tick();
-  const s = await rpc.call('settings'); if (s) settings = s;
+  const s = await rpc.call('settings'); if (s) { settings = s; PVI18N.set(s.language || 'en'); }
   if (settings.showSplash !== false) await splash(); else $('#splash').remove();
   refreshStatus();
   const p = await rpc.call('pairInfo');

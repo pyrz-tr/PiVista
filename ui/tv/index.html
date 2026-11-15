@@ -23,73 +23,73 @@
 
   <section class="screen" id="home">
     <h1 id="greeting">Welcome</h1>
-    <p class="sub">What do you want to watch?</p>
-    <h2>Streaming</h2>
+    <p class="sub" data-i18n>What do you want to watch?</p>
+    <h2 data-i18n>Streaming</h2>
     <div class="row" id="row-stream"></div>
-    <h2>My Apps</h2>
+    <h2 data-i18n>My Apps</h2>
     <div class="row" id="row-custom"></div>
-    <h2>System</h2>
+    <h2 data-i18n>System</h2>
     <div class="row" id="row-system"></div>
   </section>
 
   <section class="screen" id="media">
-    <h1>Media Player</h1>
+    <h1 data-i18n>Media Player</h1>
     <p class="sub" id="media-path">Videos, music and USB drives · 4K files play in 4K</p>
     <div class="two-col">
       <div>
-        <h2>Browse</h2>
+        <h2 data-i18n>Browse</h2>
         <div class="list" id="media-list"></div>
       </div>
       <div>
-        <h2>Play a link</h2>
-        <input id="media-url" class="focusable field" placeholder="Video or stream URL (type on your phone)" autocomplete="off" spellcheck="false">
-        <h2>Recently played</h2>
+        <h2 data-i18n>Play a link</h2>
+        <input id="media-url" class="focusable field" placeholder="Video or stream URL (type on your phone)" data-i18n-ph autocomplete="off" spellcheck="false">
+        <h2 data-i18n>Recently played</h2>
         <div class="list short" id="media-recent"></div>
       </div>
     </div>
   </section>
 
   <section class="screen" id="browser">
-    <h1>Web Browser</h1>
-    <p class="sub">Select the address bar: your phone opens a keyboard. Press OK to go.</p>
-    <input id="url" class="focusable field wide" placeholder="Search Google or enter an address" autocomplete="off" spellcheck="false">
-    <h2>Bookmarks</h2>
+    <h1 data-i18n>Web Browser</h1>
+    <p class="sub" data-i18n>Select the address bar: your phone opens a keyboard. Press OK to go.</p>
+    <input id="url" class="focusable field wide" placeholder="Search Google or enter an address" data-i18n-ph autocomplete="off" spellcheck="false">
+    <h2 data-i18n>Bookmarks</h2>
     <div class="row wrap" id="row-bookmarks"></div>
-    <h2>Recent</h2>
+    <h2 data-i18n>Recent</h2>
     <div class="list short" id="browser-history"></div>
   </section>
 
   <section class="screen" id="games">
-    <h1>Games</h1>
-    <p class="sub">Play with your phone: in a game, holding a remote button holds the key.</p>
+    <h1 data-i18n>Games</h1>
+    <p class="sub" data-i18n>Play with your phone: in a game, holding a remote button holds the key.</p>
     <div class="games" id="game-list"></div>
   </section>
 
   <section class="screen" id="addapp">
-    <h1>Add App</h1>
-    <p class="sub">Install any website or PWA by its address, or upload an <b>.html</b> file or a <b>.zip</b> web app from your phone (Remote → Apps → Add app).</p>
+    <h1 data-i18n>Add App</h1>
+    <p class="sub" data-i18n-html>Install any website or PWA by its address, or upload an <b>.html</b> file or a <b>.zip</b> web app from your phone (Remote → Apps → Add app).</p>
     <div class="two-col">
       <div>
-        <h2>Install from address</h2>
-        <input id="app-url" class="focusable field" placeholder="e.g. music.youtube.com or squoosh.app" autocomplete="off" spellcheck="false">
+        <h2 data-i18n>Install from address</h2>
+        <input id="app-url" class="focusable field" placeholder="e.g. music.youtube.com or squoosh.app" data-i18n-ph autocomplete="off" spellcheck="false">
         <div class="seg" id="app-zoom">
-          <span class="seg-label">Zoom</span>
+          <span class="seg-label" data-i18n>Zoom</span>
           <button class="focusable chip" data-z="1">100%</button>
           <button class="focusable chip active" data-z="1.25">125%</button>
           <button class="focusable chip" data-z="1.5">150%</button>
         </div>
-        <button class="btn focusable" id="app-install">Install</button>
+        <button class="btn focusable" id="app-install" data-i18n>Install</button>
         <p class="sub small" id="app-msg"></p>
       </div>
       <div>
-        <h2>Installed apps</h2>
+        <h2 data-i18n>Installed apps</h2>
         <div class="list short" id="custom-list"></div>
       </div>
     </div>
   </section>
 
   <section class="screen" id="system">
-    <h1>System Info</h1>
+    <h1 data-i18n>System Info</h1>
     <div class="stats" id="stats"></div>
   </section>
 
@@ -97,37 +97,34 @@
     <div class="pair-wrap">
       <div class="pattern-card"><img id="pattern" alt="pairing pattern"></div>
       <div class="pair-text">
-        <h1>Pair your phone</h1>
+        <h1 data-i18n>Pair your phone</h1>
         <ol>
-          <li>Connect your phone to the same Wi‑Fi.</li>
-          <li>Open the camera and scan the dot pattern.</li>
-          <li>Your phone becomes the remote. That's it.</li>
+          <li data-i18n>Connect your phone to the same Wi‑Fi.</li>
+          <li data-i18n>Open the camera and scan the dot pattern.</li>
+          <li data-i18n>Your phone becomes the remote. That's it.</li>
         </ol>
-        <p class="sub">Or open <b id="pair-url"></b> and enter code</p>
+        <p class="sub"><span data-i18n>Or open</span> <b id="pair-url"></b> <span data-i18n>and enter code</span></p>
         <div class="code" id="pair-code">------</div>
         <div class="direct" id="direct">
           <img id="pattern-ip" alt="direct IP pattern">
-          <div>
-            <b>Page didn't open?</b><br>
-            Some phones can't open <i>.local</i> addresses.<br>
-            Scan this one instead, or type <b id="pair-ip"></b>
-          </div>
+          <div><span data-i18n-html><b>Page didn't open?</b><br>Some phones can't open <i>.local</i> addresses.<br>Scan this one instead, or type</span> <b id="pair-ip"></b></div>
         </div>
         <p class="sub small" id="pair-devices"></p>
-        <button class="btn focusable" data-action="back">Done</button>
+        <button class="btn focusable" data-action="back" data-i18n>Done</button>
       </div>
     </div>
   </section>
 
   <section class="screen" id="settings">
-    <h1>Settings</h1>
+    <h1 data-i18n>Settings</h1>
     <div class="list tall" id="settings-list"></div>
   </section>
 
   <div id="screensaver"><div class="ss-clock" id="ss-clock"></div></div>
   <div id="toasts"></div>
-  <div id="offline">Can't reach the PiVista server, reconnecting… (check: <b>pivista doctor</b>)</div>
+  <div id="offline" data-i18n-html>Can't reach the PiVista server, reconnecting… (check: <b>pivista doctor</b>)</div>
 </div>
+<script src="/shared/i18n.js"></script>
 <script src="tv.js"></script>
 </body>
 </html>

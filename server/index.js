@@ -14,6 +14,7 @@ const pairing = require('./pairing');
 const player = require('./player');
 const adblock = require('./adblock');
 const userapps = require('./userapps');
+const { t: T } = require('./i18n');
 
 const PORT = Number(process.env.PIVISTA_PORT || 80);
 const UI_ROOT = path.join(__dirname, '..', 'ui');
@@ -84,6 +85,13 @@ const server = http.createServer(async (req, res) => {
     // Public: lets the remote learn the direct IP address(es) for when .local (mDNS) fails.
     if (p === '/api/hello') return sendJSON(res, 200, { name: cfg.settings.deviceName, host: `${os.hostname()}.local${portSuffix}`, ips: lanIPs().map((ip) => ip + portSuffix) });
     if (p === '/api/apps') return sendJSON(res, 200, allApps());
+    // Asked by the kiosk's zoom extension on every navigation: which browser zoom fits this page on a TV?
+    if (p === '/api/zoom') {
+      if (!isLocal(req)) return sendJSON(res, 403, {});
+      const u = url.searchParams.get('url') || '';
+      const zoom = u.startsWith(TV_URL) || u.startsWith(new URL(TV_URL).origin + '/games/') ? 1 : (currentApp && currentApp.scale) || (currentApp && currentApp.browser ? builtins.BROWSER_SCALE : 1);
+      return sendJSON(res, 200, { zoom });
+    }
 
     // App install by file upload (from the phone): raw body, ?name=<filename>&scale=<zoom>
     if (p === '/api/apps/install' && req.method === 'POST') {
@@ -163,6 +171,7 @@ async function mirrorTick() {
   }
   let reason = null;
   if (player.active) reason = 'player';
+  else if (stateNow().game) reason = 'game';    // games animate every frame: streaming them would steal CPU from the game
   else if (cdp.connected) { try { if (await cdp.eval(VIDEO_CHECK)) reason = 'video'; } catch {} }
   else reason = 'offline';
   if (reason !== mirror.paused) {
@@ -185,11 +194,13 @@ cdp.on('frame', (f) => {
 });
 cdp.on('disconnected', () => { mirror.running = false; });
 
+// Screencast metadata is in screen (DIP) pixels; CDP mouse events use the page's CSS pixels,
+// which are smaller by the browser zoom (cdp.scale) when an app is zoomed for the TV.
 async function mirrorPoint(fx, fy) {
-  const m = mirror.meta || { deviceWidth: cdp.SCREEN.w / cdp.scale, deviceHeight: cdp.SCREEN.h / cdp.scale };
-  const x = Math.max(0, Math.min(1, fx)) * m.deviceWidth; const y = Math.max(0, Math.min(1, fy)) * m.deviceHeight;
-  cursor.x = x * cdp.scale; cursor.y = y * cdp.scale;
-  return { x, y };
+  const m = mirror.meta || { deviceWidth: cdp.SCREEN.w, deviceHeight: cdp.SCREEN.h };
+  const sx = Math.max(0, Math.min(1, fx)) * m.deviceWidth; const sy = Math.max(0, Math.min(1, fy)) * m.deviceHeight;
+  cursor.x = sx; cursor.y = sy;
+  return { x: sx / cdp.scale, y: sy / cdp.scale };
 }
 
 // ---------- navigation ----------
@@ -209,7 +220,7 @@ async function openUrl(url) {
   if (!/^https?:\/\//i.test(url)) {
     url = /^[^\s]+\.[a-z]{2,}(\/|$)/i.test(url) ? 'https://' + url : 'https://www.google.com/search?q=' + encodeURIComponent(url);
   }
-  currentApp = { id: 'browser', name: 'Web Browser', back: 'history', browser: true };
+  currentApp = { id: 'browser', name: 'Web Browser', back: 'history', browser: true, scale: builtins.BROWSER_SCALE };
   await cdp.navigate(url, { scale: builtins.BROWSER_SCALE });
 }
 
@@ -257,7 +268,7 @@ const handlers = {
   async volume({ v }) {
     await sys.volume(v);
     const vol = await sys.getVolume();
-    if (vol) notify({ t: 'volume', ...vol, message: vol.muted ? 'Muted' : `Volume ${vol.level}%` });
+    if (vol) notify({ t: 'volume', ...vol, message: vol.muted ? T('Muted') : T('Volume {n}%', { n: vol.level }) });
   },
   launch: ({ id, url }) => launch(id, url),
   home: () => goHome(),
@@ -272,7 +283,7 @@ const handlers = {
   info: () => sys.info(),
   settings: () => cfg.settings,
   async setSettings({ patch }) {
-    const allowed = ['deviceName', 'autostart', 'allow4k', 'thermalLimitC', 'showSplash', 'screensaverMinutes', 'youtubeAdblock'];
+    const allowed = ['deviceName', 'autostart', 'allow4k', 'thermalLimitC', 'showSplash', 'screensaverMinutes', 'youtubeAdblock', 'language'];
     for (const k of allowed) if (patch && k in patch) cfg.settings[k] = patch[k];
     cfg.saveSettings();
     if (patch && 'autostart' in patch) await sys.setAutostart(!!patch.autostart);
@@ -294,7 +305,7 @@ const handlers = {
     const cur = currentApp && currentApp.browser ? await cdp.current() : null;
     if (!cur) return null;
     if (!cfg.state.bookmarks.find((b) => b.url === cur.url)) cfg.state.bookmarks.push({ name: (cur.title || cur.url).slice(0, 40), url: cur.url });
-    cfg.saveState(); notify({ t: 'info', message: 'Bookmark added' });
+    cfg.saveState(); notify({ t: 'info', message: T('Bookmark added') });
     return cfg.state.bookmarks;
   },
   removeBookmark({ url }) { cfg.state.bookmarks = cfg.state.bookmarks.filter((b) => b.url !== url); cfg.saveState(); return cfg.state.bookmarks; },

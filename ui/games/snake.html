@@ -4,12 +4,14 @@
 <body>
 <canvas class="game" id="c" width="1920" height="1080"></canvas>
 <div class="hud"><div id="score">Score 0</div><div id="best">Best 0</div></div>
-<div class="overlay" id="ov"><h1>Berry Snake</h1><p>Eat the raspberries, don't bite your tail.</p><p class="big" id="ov-msg"></p>
-  <p class="keys">▲ ▼ ◀ ▶ steer · <b>OK</b> start · Back exit</p></div>
+<div class="overlay" id="ov"><h1>Berry Snake</h1><p data-i18n>Eat the raspberries, don't bite your tail.</p><p class="big" id="ov-msg"></p>
+  <p class="keys" data-i18n-html>▲ ▼ ◀ ▶ steer · <b>OK</b> start · Back exit</p></div>
+<script src="/shared/i18n.js"></script>
 <script src="common.js"></script>
+<script src="render.js"></script>
 <script>
 'use strict';
-const C = PV.$('#c'), g = C.getContext('2d');
+const C = PV.$('#c');
 const CELL = 60, COLS = 32, ROWS = 16, OX = 0, OY = 120;
 let snake, dir, nextDir, berry, score = 0, state = 'ready', tick = 0, speed;
 function reset() {
@@ -31,31 +33,36 @@ function update(dt) {
   const head = { x: (snake[0].x + dir.x + COLS) % COLS, y: (snake[0].y + dir.y + ROWS) % ROWS };
   if (snake.some((s) => s.x === head.x && s.y === head.y)) {
     state = 'over'; PV.best('snake', score);
-    PV.$('#ov-msg').textContent = `Game over · ${score} points`; PV.$('#ov').classList.remove('hidden'); return;
+    PV.$('#ov-msg').textContent = t('Game over · {n} points', { n: score }); PV.$('#ov').classList.remove('hidden'); return;
   }
   snake.unshift(head);
   if (head.x === berry.x && head.y === berry.y) { score += 10; speed = Math.max(0.06, speed - 0.004); place(); } else snake.pop();
 }
+// GPU sprites (WebGL batch renderer; Canvas-2D fallback)
+const R = PVRender.create(C);
+const mk = (w, h, f) => { const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d')); return R.texture(c); };
+const SEGT = mk(64, 64, (x) => { x.fillStyle = '#fff'; x.beginPath(); x.roundRect(2, 2, 60, 60, 16); x.fill(); x.fillStyle = 'rgba(255,255,255,.35)'; x.fillRect(12, 10, 40, 8); });
+const DOT = mk(32, 32, (x) => { x.fillStyle = '#fff'; x.beginPath(); x.arc(16, 16, 15, 0, 7); x.fill(); });
+const BERRY = mk(64, 72, (x) => { x.fillStyle = '#e0115f'; for (const [dx, dy] of [[-8, -6], [8, -6], [0, -12], [-10, 6], [10, 6], [0, 2], [0, 14]]) { x.beginPath(); x.arc(32 + dx, 40 + dy, 10, 0, 7); x.fill(); }
+  x.fillStyle = '#ff8fb5'; x.beginPath(); x.arc(26, 30, 4, 0, 7); x.fill(); x.fillStyle = '#3fbf5a'; x.fillRect(28, 4, 8, 14); });
+let lastScore = -1;
 function render() {
-  g.fillStyle = '#120a16'; g.fillRect(0, 0, 1920, 1080);
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { g.fillStyle = (x + y) % 2 ? '#1b1020' : '#1f1325'; g.fillRect(OX + x * CELL, OY + y * CELL, CELL, CELL); }
-  if (!snake) return;
-  // berry
-  const bx = OX + berry.x * CELL + 30, by = OY + berry.y * CELL + 32, t = performance.now() / 300;
-  g.fillStyle = '#e0115f';
-  for (const [dx, dy] of [[-8, -6], [8, -6], [0, -12], [-10, 6], [10, 6], [0, 2], [0, 14]]) { g.beginPath(); g.arc(bx + dx, by + dy + Math.sin(t) * 2, 9, 0, 7); g.fill(); }
-  g.fillStyle = '#3fbf5a'; g.fillRect(bx - 4, by - 26, 8, 10);
-  // snake
-  snake.forEach((s, i) => {
-    const f = 1 - i / (snake.length + 6);
-    g.fillStyle = `hsl(${145 - i * 1.5}, 65%, ${32 + f * 22}%)`;
-    const pad = i === 0 ? 3 : 7; g.beginPath(); g.roundRect(OX + s.x * CELL + pad, OY + s.y * CELL + pad, CELL - pad * 2, CELL - pad * 2, 14); g.fill();
-  });
-  const h = snake[0]; g.fillStyle = '#fff';
-  for (const o of [-1, 1]) { g.beginPath(); g.arc(OX + h.x * CELL + 30 + dir.y * o * 12 + dir.x * 8, OY + h.y * CELL + 30 + dir.x * o * 12 + dir.y * 8, 7, 0, 7); g.fill(); }
-  PV.$('#score').textContent = `Score ${score}`; PV.$('#best').textContent = `Best ${PV.best('snake')}`;
+  R.begin('#120a16');
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ((x + y) % 2) R.rect(OX + x * CELL, OY + y * CELL, CELL, CELL, '#1b1020'); else R.rect(OX + x * CELL, OY + y * CELL, CELL, CELL, '#1f1325');
+  if (snake) {
+    const t = performance.now() / 300;
+    R.image(BERRY, OX + berry.x * CELL - 2, OY + berry.y * CELL - 8 + Math.sin(t) * 2, 64, 72);
+    snake.forEach((sg, i) => {
+      const f = 1 - i / (snake.length + 6); const pad = i === 0 ? 2 : 6;
+      R.image(SEGT, OX + sg.x * CELL + pad, OY + sg.y * CELL + pad, CELL - pad * 2, CELL - pad * 2, { tint: `hsl(${145 - i * 1.5}, 65%, ${32 + f * 22}%)` });
+    });
+    const h = snake[0];
+    for (const o of [-1, 1]) R.image(DOT, OX + h.x * CELL + 30 + dir.y * o * 12 + dir.x * 8 - 7, OY + h.y * CELL + 30 + dir.x * o * 12 + dir.y * 8 - 7, 14, 14);
+  }
+  R.end();
+  if (score !== lastScore) { lastScore = score; PV.$('#score').textContent = t('Score {n}', { n: score }); PV.$('#best').textContent = t('Best {n}', { n: PV.best('snake') }); }
 }
-PV.$('#best').textContent = `Best ${PV.best('snake')}`;
+PV.$('#best').textContent = t('Best {n}', { n: PV.best('snake') });
 snake = [{ x: 8, y: 8 }, { x: 7, y: 8 }, { x: 6, y: 8 }]; dir = { x: 1, y: 0 }; berry = { x: 20, y: 8 };
 PV.loop(update, render);
 </script>

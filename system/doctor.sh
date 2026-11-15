@@ -33,6 +33,9 @@ if [ -x /opt/pivista/system/start-kiosk.sh ] && ! runuser -u "$KIOSK_USER" -- te
   hint "sudo chmod 755 /opt/pivista && sudo chmod -R a+rX /opt/pivista && sudo pivista restart"
 fi
 [ -x /opt/pivista/system/start-kiosk.sh ] && ok "start-kiosk.sh present" || { bad "/opt/pivista/system/start-kiosk.sh missing (old install)"; hint "re-run the installer (see README → Updating)"; }
+[ -f /opt/pivista/system/zoom-extension/manifest.json ] && grep -q zoom-extension /opt/pivista/system/kiosk.sh \
+  && ok "TV zoom extension installed (streaming apps fill the screen)" \
+  || { warn "TV zoom extension missing (streaming apps may only fill part of the screen)"; hint "sudo pivista update"; }
 grep -q WLR_LIBINPUT_NO_DEVICES /etc/systemd/system/pivista-kiosk.service 2>/dev/null \
   && ok "kiosk service allows running without keyboard/mouse" \
   || { bad "kiosk service lacks WLR_LIBINPUT_NO_DEVICES=1 (black screen without keyboard/mouse)"; hint "re-run the installer (see README → Updating)"; }

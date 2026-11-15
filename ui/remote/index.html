@@ -17,11 +17,11 @@
 <main id="pair-view" class="view hidden">
   <img class="hero-logo" src="/shared/logo.svg" alt="">
   <div class="logo"><span>Pi<b>Vista</b></span></div>
-  <p class="lead">Scan the dot pattern on your TV with your phone camera, or type the 6-digit code shown on screen.</p>
+  <p class="lead" data-i18n>Scan the dot pattern on your TV with your phone camera, or type the 6-digit code shown on screen.</p>
   <input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code">
-  <button id="pair-btn" class="primary">Pair</button>
+  <button id="pair-btn" class="primary" data-i18n>Pair</button>
   <p id="pair-err" class="err"></p>
-  <p class="hint">Page won't load from <i>pivista.local</i>? Use the IP address shown at the top of the TV screen, or scan the small “direct” pattern.</p>
+  <p class="hint" data-i18n-html>Page won't load from <i>pivista.local</i>? Use the IP address shown at the top of the TV screen, or scan the small “direct” pattern.</p>
 </main>
 
 <!-- remote -->
@@ -29,15 +29,15 @@
   <header>
     <div class="logo small"><img src="/shared/logo.svg" alt=""><span>Pi<b>Vista</b></span></div>
     <div class="hdr-right">
-      <span id="game-pill" class="game-pill hidden">🎮 Game mode</span>
+      <span id="game-pill" class="game-pill hidden" data-i18n>🎮 Game mode</span>
       <span id="conn" class="conn">connecting…</span>
       <button id="kbd-btn" class="icon-btn" aria-label="Keyboard">⌨</button>
     </div>
   </header>
 
   <div id="ip-banner" class="banner hidden">
-    <span>Can't reach <b id="ip-banner-host"></b>.</span>
-    <button id="ip-switch">Use direct IP</button>
+    <span><span data-i18n>Can't reach</span> <b id="ip-banner-host"></b></span>
+    <button id="ip-switch" data-i18n>Use direct IP</button>
   </div>
 
   <!-- context: media player -->
@@ -55,23 +55,23 @@
   <div id="ctx-browser" class="ctx hidden">
     <div class="br-row">
       <button data-bn="back">◀</button><button data-bn="forward">▶</button><button data-bn="reload">⟳</button>
-      <input id="br-url" placeholder="Search or address" enterkeyhint="go" autocapitalize="off" autocomplete="off">
+      <input id="br-url" placeholder="Search or address" data-i18n-ph enterkeyhint="go" autocapitalize="off" autocomplete="off">
       <button id="br-star">☆</button>
     </div>
   </div>
 
   <nav class="tabs">
-    <button data-tab="pad" class="active">Remote</button>
-    <button data-tab="screen">Screen</button>
-    <button data-tab="touch">Touchpad</button>
-    <button data-tab="apps">Apps</button>
+    <button data-tab="pad" class="active" data-i18n>Remote</button>
+    <button data-tab="screen" data-i18n>Screen</button>
+    <button data-tab="touch" data-i18n>Touchpad</button>
+    <button data-tab="apps" data-i18n>Apps</button>
   </nav>
 
   <section id="tab-pad" class="tab">
     <div class="quick">
-      <button data-key="back" class="round">↩<small>Back</small></button>
-      <button data-key="home" class="round">⌂<small>Home</small></button>
-      <button data-key="playpause" class="round">⏯<small>Play</small></button>
+      <button data-key="back" class="round">↩<small data-i18n>Back</small></button>
+      <button data-key="home" class="round">⌂<small data-i18n>Home</small></button>
+      <button data-key="playpause" class="round">⏯<small data-i18n>Play</small></button>
     </div>
     <div class="dpad">
       <button data-key="up" class="d up">▲</button>
@@ -90,26 +90,26 @@
       <img id="mirror-img" alt="">
       <div id="mirror-msg" class="mirror-msg">Connecting to the TV screen…</div>
     </div>
-    <p class="hint center">Tap to press · drag up/down to scroll · video isn't streamed to save the Pi's power</p>
+    <p class="hint center" data-i18n>Tap to press · drag up/down to scroll · video isn't streamed to save the Pi's power</p>
     <div class="quick">
-      <button data-key="back" class="round">↩<small>Back</small></button>
-      <button data-key="home" class="round">⌂<small>Home</small></button>
-      <button data-key="playpause" class="round">⏯<small>Play</small></button>
+      <button data-key="back" class="round">↩<small data-i18n>Back</small></button>
+      <button data-key="home" class="round">⌂<small data-i18n>Home</small></button>
+      <button data-key="playpause" class="round">⏯<small data-i18n>Play</small></button>
     </div>
   </section>
 
   <section id="tab-touch" class="tab hidden">
-    <div id="pad" class="touchpad"><span>Drag to move · tap to click · two fingers to scroll</span></div>
+    <div id="pad" class="touchpad"><span data-i18n>Drag to move · tap to click · two fingers to scroll</span></div>
     <div class="quick">
-      <button data-key="back" class="round">↩<small>Back</small></button>
-      <button data-key="home" class="round">⌂<small>Home</small></button>
-      <button data-key="space" class="round">␣<small>Space</small></button>
+      <button data-key="back" class="round">↩<small data-i18n>Back</small></button>
+      <button data-key="home" class="round">⌂<small data-i18n>Home</small></button>
+      <button data-key="space" class="round">␣<small data-i18n>Space</small></button>
     </div>
   </section>
 
   <section id="tab-apps" class="tab hidden">
     <div id="apps" class="apps"></div>
-    <button id="unpair" class="link">Unpair this phone</button>
+    <button id="unpair" class="link" data-i18n>Unpair this phone</button>
   </section>
 </main>
 
@@ -117,29 +117,30 @@
 <div id="kbd" class="sheet hidden">
   <div class="sheet-card">
     <div class="sheet-head"><span id="kbd-label">Type on TV</span><button id="kbd-close" class="icon-btn">✕</button></div>
-    <input id="kbd-input" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="Start typing…">
+    <input id="kbd-input" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="Start typing…" data-i18n-ph>
     <div class="kbd-row">
-      <button id="kbd-bksp">⌫</button><button id="kbd-clear">Clear</button><button id="kbd-tab">Next field</button><button id="kbd-go" class="primary">Enter</button>
+      <button id="kbd-bksp">⌫</button><button id="kbd-clear" data-i18n>Clear</button><button id="kbd-tab" data-i18n>Next field</button><button id="kbd-go" class="primary" data-i18n>Enter</button>
     </div>
-    <p class="hint">Text appears on the TV as you type.</p>
+    <p class="hint" data-i18n>Text appears on the TV as you type.</p>
   </div>
 </div>
 
 <!-- add app sheet -->
 <div id="addapp" class="sheet hidden">
   <div class="sheet-card">
-    <div class="sheet-head"><span>Add an app</span><button id="add-close" class="icon-btn">✕</button></div>
-    <label class="lbl">Website or PWA address</label>
-    <input id="add-url" placeholder="e.g. music.youtube.com" autocapitalize="off" autocomplete="off" inputmode="url">
-    <label class="lbl">…or upload an .html file or a .zip web app</label>
+    <div class="sheet-head"><span data-i18n>Add an app</span><button id="add-close" class="icon-btn">✕</button></div>
+    <label class="lbl" data-i18n>Website or PWA address</label>
+    <input id="add-url" placeholder="e.g. music.youtube.com" data-i18n-ph autocapitalize="off" autocomplete="off" inputmode="url">
+    <label class="lbl" data-i18n>…or upload an .html file or a .zip web app</label>
     <input id="add-file" type="file" accept=".html,.htm,.zip,text/html,application/zip">
-    <label class="lbl">TV zoom</label>
+    <label class="lbl" data-i18n>TV zoom</label>
     <div class="seg" id="add-zoom"><button data-z="1">100%</button><button data-z="1.25" class="active">125%</button><button data-z="1.5">150%</button></div>
-    <button id="add-go" class="primary">Install</button>
+    <button id="add-go" class="primary" data-i18n>Install</button>
     <p id="add-msg" class="hint"></p>
     <div id="add-list"></div>
   </div>
 </div>
+<script src="/shared/i18n.js"></script>
 <script src="/remote/remote.js"></script>
 </body>
 </html>

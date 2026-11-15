@@ -95,15 +95,12 @@ class CDP extends EventEmitter {
   async send(method, params = {}) { await this.connect(); return this._raw(method, params); }
 
   async _applyApp() {
-    const { ua, scale, scripts, blocked } = this.app;
+    const { ua, scripts, blocked } = this.app;
     await this._raw('Emulation.setUserAgentOverride', { userAgent: ua || this.defaultUA || '' });
-    // TV-friendly sizing: render desktop sites at e.g. 1280x720 CSS px, scaled 1.5x to fill 1080p.
-    if (scale && scale !== 1) {
-      await this._raw('Emulation.setDeviceMetricsOverride', { width: Math.round(SCREEN.w / scale), height: Math.round(SCREEN.h / scale),
-        deviceScaleFactor: scale, mobile: false, screenWidth: Math.round(SCREEN.w / scale), screenHeight: Math.round(SCREEN.h / scale) });
-    } else {
-      await this._raw('Emulation.clearDeviceMetricsOverride');
-    }
+    // TV zoom is applied as real browser zoom by the PiVista zoom extension (system/zoom-extension),
+    // which asks GET /api/zoom. Device-metrics emulation can't enlarge a page in a real window
+    // (it only shrank it into a corner), so make sure no old override is left behind.
+    await this._raw('Emulation.clearDeviceMetricsOverride').catch(() => {});
     for (const id of this.scriptIds) await this._raw('Page.removeScriptToEvaluateOnNewDocument', { identifier: id }).catch(() => {});
     this.scriptIds = [];
     for (const source of scripts) this.scriptIds.push((await this._raw('Page.addScriptToEvaluateOnNewDocument', { source })).identifier);
