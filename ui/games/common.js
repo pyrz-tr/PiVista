@@ -39,6 +39,7 @@ const PV = (() => {
       let last = performance.now(), acc = 0;
       const frame = (now) => {
         acc += Math.min(0.25, (now - last) / 1000); last = now;
+        if (window.__pvLocked) acc = 0;            // screen locked from the owner's phone: freeze the game
         while (acc >= step) { update(step); acc -= step; }
         render(); requestAnimationFrame(frame);
       };

@@ -31,6 +31,7 @@
     <div class="hdr-right">
       <span id="game-pill" class="game-pill hidden" data-i18n>🎮 Game mode</span>
       <span id="conn" class="conn">connecting…</span>
+      <button id="lock-btn" class="icon-btn hidden" aria-label="Lock screen">🔒</button>
       <button id="kbd-btn" class="icon-btn" aria-label="Keyboard">⌨</button>
     </div>
   </header>
@@ -112,6 +113,17 @@
     <button id="unpair" class="link" data-i18n>Unpair this phone</button>
   </section>
 </main>
+
+<!-- screen locked (from the owner phone) -->
+<div id="locked" class="sheet lockscreen hidden">
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <h2 data-i18n>Screen locked</h2>
+    <p id="locked-by"></p>
+    <button id="unlock-btn" class="primary hidden" data-i18n>Unlock</button>
+    <p id="locked-note" class="hint" data-i18n>Only the first paired phone can unlock the TV.</p>
+  </div>
+</div>
 
 <!-- keyboard sheet -->
 <div id="kbd" class="sheet hidden">

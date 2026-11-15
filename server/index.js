@@ -85,6 +85,12 @@ const server = http.createServer(async (req, res) => {
     // Public: lets the remote learn the direct IP address(es) for when .local (mDNS) fails.
     if (p === '/api/hello') return sendJSON(res, 200, { name: cfg.settings.deviceName, host: `${os.hostname()}.local${portSuffix}`, ips: lanIPs().map((ip) => ip + portSuffix) });
     if (p === '/api/apps') return sendJSON(res, 200, allApps());
+    // Emergency unlock from the Pi's terminal (sudo pivista unlock). The custom header makes
+    // browsers send a CORS preflight, which we never answer, so web pages can't call this.
+    if (p === '/api/unlock' && req.method === 'POST') {
+      if (!isLocal(req) || req.headers['x-pivista-cli'] !== '1') return sendJSON(res, 403, {});
+      await setLock(false, 'terminal'); return sendJSON(res, 200, { ok: true });
+    }
     // Asked by the kiosk's zoom extension on every navigation: which browser zoom fits this page on a TV?
     if (p === '/api/zoom') {
       if (!isLocal(req)) return sendJSON(res, 403, {});
@@ -283,16 +289,20 @@ const handlers = {
   info: () => sys.info(),
   settings: () => cfg.settings,
   async setSettings({ patch }) {
-    const allowed = ['deviceName', 'autostart', 'allow4k', 'thermalLimitC', 'showSplash', 'screensaverMinutes', 'youtubeAdblock', 'language'];
+    const allowed = ['deviceName', 'autostart', 'allow4k', 'thermalLimitC', 'showSplash', 'screensaverMinutes', 'youtubeAdblock', 'language', 'clock24'];
     for (const k of allowed) if (patch && k in patch) cfg.settings[k] = patch[k];
     cfg.saveSettings();
     if (patch && 'autostart' in patch) await sys.setAutostart(!!patch.autostart);
     broadcast({ t: 'settings', settings: cfg.settings });
     return cfg.settings;
   },
-  pairInfo: () => ({ url: pairing.pairUrl(PORT), ipUrl: lanIPs()[0] ? pairing.pairUrl(PORT, lanIPs()[0]) : null,
+  pairInfo: () => ({ networkChanged, url: pairing.pairUrl(PORT), ipUrl: lanIPs()[0] ? pairing.pairUrl(PORT, lanIPs()[0]) : null,
     code: pairing.currentCode(), devices: pairing.devices(), ips: lanIPs().map((ip) => ip + portSuffix) }),
-  forget: ({ id }) => { pairing.forget(id); return pairing.devices(); },
+  forget: ({ id }) => {
+    pairing.forget(id);
+    if (lock.on && (!cfg.state.devices.length || !id)) setLock(false, '');   // nobody left who could unlock
+    return pairing.devices();
+  },
   // media player
   mediaList: ({ dir }) => player.list(dir),
   mediaRecent: () => player.recent(),
@@ -314,11 +324,48 @@ const handlers = {
     if (v === 'forward') return cdp.history(1);
     if (v === 'reload') return cdp.reload();
   },
+  // ---- sound
+  async audioOutputs() { return sys.audioOutputs(); },
+  async setAudioOutput({ id }) {
+    const outs = await sys.audioOutputs(); const o = outs.find((x) => x.id === Number(id));
+    if (!o) throw new Error('No such output');
+    await sys.setAudioOutput(o.id); cfg.settings.audioOutput = o.name; cfg.saveSettings();
+    return sys.audioOutputs();
+  },
+  async getVolume() { return sys.getVolume(); },
+  async setVolume({ p }) { await sys.setVolumePercent(Number(p) || 0); return sys.getVolume(); },
+  // ---- Wi-Fi / network
+  wifiScan: () => sys.wifiScan(),
+  wifiConnect: ({ ssid, password }) => sys.wifiConnect(String(ssid || ''), password ? String(password) : ''),
+  network: () => sys.network(),
+  // ---- date & time
+  timeInfo: () => sys.timeInfo(),
+  async timezones({ q }) {
+    const all = await sys.timezones(); const f = String(q || '').toLowerCase().replace(/\s+/g, '_');
+    return (f ? all.filter((z) => z.toLowerCase().includes(f)) : all).slice(0, 60);
+  },
+  async setTimezone({ tz }) { const all = await sys.timezones(); if (!all.includes(tz)) throw new Error('Unknown time zone'); await sys.setTimezone(tz); return sys.timeInfo(); },
+  async setNtp({ on }) { await sys.setNtp(!!on); return sys.timeInfo(); },
+  async setTime({ v }) { await sys.setTime(String(v || '').trim()); return sys.timeInfo(); },
+  // ---- display / maintenance
+  async setResolution({ v }) {
+    if (!['auto', '1920x1080', '1280x720'].includes(v)) throw new Error('Unsupported resolution');
+    cfg.settings.uiResolution = v; cfg.saveSettings(); await sys.setResolution(v === 'auto' ? 'auto' : v + '@60Hz'); return cfg.settings;
+  },
+  update: () => sys.update(),
+  ackNetwork() { networkChanged = false; },
+  // ---- screen lock (owner phone only)
+  lock(msg, ws) {
+    if (!ws.device || !isOwner(ws.device)) throw new Error('Only the first paired phone can lock the screen');
+    return setLock(!!msg.on, ws.device.name);
+  },
   power: ({ v }) => (v === 'reboot' ? sys.reboot() : v === 'shutdown' ? sys.shutdown() : v === 'restart-ui' ? sys.restartUI() : null),
   state: () => stateNow(),
 };
 // Commands only the TV itself may issue.
-const TV_ONLY = new Set(['pairInfo']);
+const TV_ONLY = new Set(['pairInfo', 'ackNetwork']);
+// While the screen is locked, phones may only read state (and the owner may unlock).
+const LOCK_ALLOWED = new Set(['state', 'apps', 'info', 'settings', 'lock', 'mirror', 'getVolume', 'network', 'timeInfo', 'audioOutputs']);
 
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://x');
@@ -328,6 +375,7 @@ wss.on('connection', (ws, req) => {
   const tv = isLocal(req) && req.headers.origin === TV_ORIGIN;
   if (!tv && !device) { ws.close(4001, 'not paired'); return; }
   ws.role = device ? 'remote' : 'tv';
+  ws.device = device || null;
   clients.add(ws);
   ws.on('close', () => clients.delete(ws));
   ws.on('message', async (raw, isBinary) => {
@@ -335,6 +383,10 @@ wss.on('connection', (ws, req) => {
     let msg; try { msg = JSON.parse(raw); } catch { return; }
     const h = handlers[msg.t];
     if (!h || (TV_ONLY.has(msg.t) && ws.role !== 'tv')) return;
+    if (lock.on && ws.role === 'remote' && !LOCK_ALLOWED.has(msg.t)) {
+      if (msg.id) ws.send(JSON.stringify({ t: 'res', id: msg.id, error: 'locked' }));
+      return;
+    }
     try {
       const data = await h(msg, ws);
       if (msg.id) ws.send(JSON.stringify({ t: 'res', id: msg.id, data }));
@@ -343,11 +395,77 @@ wss.on('connection', (ws, req) => {
       if (!/CDP|ECONNREFUSED|fetch failed/.test(e.message)) log('error', msg.t, e.message);
     }
   });
-  ws.send(JSON.stringify({ t: 'hello', role: ws.role, settings: cfg.settings, state: stateNow() }));
+  ws.send(JSON.stringify({ t: 'hello', role: ws.role, settings: cfg.settings, state: stateNow(), owner: !!(device && isOwner(device)), lock: lockInfo() }));
 });
+
+// ---------- screen lock: the first paired phone (the owner) can lock the TV.
+// Pauses video / media player / games, covers the screen and blocks every remote until unlocked.
+const lock = { on: !!(cfg.state.lock && cfg.state.lock.on), by: (cfg.state.lock && cfg.state.lock.by) || '' };
+const isOwner = (d) => cfg.state.devices.length && cfg.state.devices[0].id === d.id;
+const lockInfo = () => ({ on: lock.on, by: lock.by });
+function lockScript() {
+  const title = JSON.stringify(T('Screen locked')); const sub = JSON.stringify(T('Locked from {name}', { name: lock.by }));
+  return `(() => {
+    window.__pvLocked = ${lock.on};
+    let o = document.getElementById('__pv_lock');
+    if (${lock.on}) {
+      if (!o) { o = document.createElement('div'); o.id = '__pv_lock';
+        o.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(10,5,14,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font:700 52px system-ui,sans-serif;text-align:center';
+        document.documentElement.appendChild(o); }
+      o.innerHTML = '<div style="font-size:150px;line-height:1.2">🔒</div><div></div><div style="font-size:28px;font-weight:400;opacity:.75;margin-top:18px"></div>';
+      o.children[1].textContent = ${title}; o.children[2].textContent = ${sub};
+      window.__pvPaused = window.__pvPaused || [];
+      const pauseAll = () => document.querySelectorAll('video,audio').forEach((v) => { if (!v.paused) { v.pause(); if (!window.__pvPaused.includes(v)) window.__pvPaused.push(v); } });
+      pauseAll(); clearInterval(window.__pvLockT); window.__pvLockT = setInterval(pauseAll, 400);
+    } else {
+      if (o) o.remove(); clearInterval(window.__pvLockT);
+      (window.__pvPaused || []).forEach((v) => { try { v.play(); } catch (_) {} }); window.__pvPaused = [];
+    }
+  })()`;
+}
+async function applyLock() {
+  player.lock(lock.on, T('Screen locked'));
+  try { await cdp.eval(lockScript()); } catch {}
+}
+async function setLock(on, by) {
+  lock.on = on; lock.by = by || lock.by;
+  cfg.state.lock = { on: lock.on, by: lock.by }; cfg.saveState();
+  log(on ? 'screen locked by' : 'screen unlocked by', by);
+  await applyLock();
+  broadcast({ t: 'lock', ...lockInfo() });
+  return lockInfo();
+}
+
+// ---------- network changes: new Wi-Fi / new IP -> show the pairing screen again
+let networkChanged = false;
+async function checkNetwork() {
+  const n = await sys.network();
+  const key = (n.ssid || '') + '|' + n.ips.join(',');
+  if (!n.ips.length) return;                              // offline for a moment: wait
+  const prev = cfg.state.networkKey;
+  if (prev === key) return;
+  cfg.state.networkKey = key; cfg.saveState();
+  if (!prev) return;                                      // first run: nothing to compare with
+  networkChanged = true;
+  log('network changed:', prev, '->', key);
+  broadcast({ t: 'network-changed', network: n }, (c) => c.role === 'tv');
+  if (currentApp || player.active) goHome('pair').catch(() => {});
+}
+setInterval(() => checkNetwork().catch(() => {}), 10000).unref();
+checkNetwork().catch(() => {});
+
+// ---------- sound: prefer HDMI (the TV's speakers) unless the user picked another output
+async function applyAudio(tries = 12) {
+  const outs = await sys.audioOutputs();
+  if (!outs.length) { if (tries > 0) setTimeout(() => applyAudio(tries - 1), 10000); return; }
+  const want = cfg.settings.audioOutput ? outs.find((o) => o.name === cfg.settings.audioOutput) : outs.find((o) => o.kind === 'hdmi');
+  if (want && !want.default) { await sys.setAudioOutput(want.id); log('sound output ->', want.name); }
+}
+setTimeout(() => applyAudio().catch(() => {}), 5000);
 
 // ---------- wiring ----------
 cdp.on('navigate', (u) => {
+  if (lock.on) setTimeout(() => applyLock(), 600);
   lastUrl = u;
   // a navigation can move the page to a new renderer process: restart the mirror stream
   if (mirror.running) { mirror.running = false; cdp.stopScreencast().then(() => mirrorTick()).catch(() => {}); }
@@ -363,6 +481,12 @@ cdp.on('navigate', (u) => {
 cdp.on('focus', (f) => toRemotes({ t: 'kbd', ...f }));
 player.onChange = () => broadcast({ t: 'state', state: stateNow() });
 thermal.start(notify);
+cdp.on('connected', () => {
+  if (lock.on) setTimeout(() => applyLock(), 1500);
+  if (cfg.settings.uiResolution && cfg.settings.uiResolution !== '1920x1080') {
+    sys.setResolution(cfg.settings.uiResolution === 'auto' ? 'auto' : cfg.settings.uiResolution + '@60Hz').catch(() => {});
+  }
+});
 cdp.connect().catch(() => {});
 setInterval(() => { if (!cdp.connected) cdp.connect().catch(() => {}); }, 3000).unref();
 

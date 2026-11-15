@@ -77,4 +77,12 @@ button:active { transform: scale(.95); }
 #add-go { width: 100%; }
 .row-app { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid #ffffff12; font-size: 15px; }
 .row-app button { border: 0; background: none; color: #fca5a5; font-size: 14px; }
-.game-pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #ea580c; color: #fff; }
+.game-pill { font-size: 11px; font-weight: 700; padding: 3px 8px; white-space: nowrap; border-radius: 999px; background: #ea580c; color: #fff; }
+.lockscreen { align-items: center; background: #0d0710f2; }
+.lock-card { text-align: center; padding: 24px; max-width: 360px; }
+.lock-icon { font-size: 96px; }
+.lock-card h2 { margin: 8px 0; font-size: 28px; }
+.lock-card p { color: var(--muted); }
+.lock-card .primary { width: 100%; margin-top: 16px; }
+.hdr-right { gap: 6px; } .hdr-right .icon-btn { width: 38px; height: 38px; font-size: 18px; }
+@media (max-width: 380px) { .conn { display: none; } }

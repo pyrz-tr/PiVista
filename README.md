@@ -17,6 +17,10 @@
 - 🌐 Web Browser with bookmarks, history, and back/forward/reload and an address bar on the phone
 - 🎮 **Games**: Raspberry Rally (kart racer), Berry Snake, Brick Blaster, Berry Merge, with a hold-to-steer game mode on the phone
 - ⚙️ System apps: Settings, System Info (temperature, throttling, power), Pair Remote, Add App
+- 🔊 Sound through **HDMI** (the TV's speakers) by default, or switch to the **audio jack** or **USB speakers** in Settings
+- 📶 **Wi‑Fi**, 🕒 **date & time / time zone**, resolution, device name, 24-hour clock and more in Settings
+- 🔒 **Screen lock** from the first paired phone: pauses video and games, covers the screen and blocks all remotes until unlocked
+- 🔁 After a **network change** (new Wi‑Fi or new IP), the TV shows the pairing screen again
 - 🚀 Starts on boot (you can turn that off in Settings)
 - 🌡️ Overheat protection, SD-card-friendly tuning, HDMI tuned to work every time
 
@@ -127,6 +131,32 @@ Installer options: `--keep-hostname` (don't rename the Pi to `pivista`), `--no-t
 
 Tip: in the phone browser use **Add to Home Screen**, and the remote opens full screen like an app.
 
+### Screen lock
+
+The **first phone that was paired** is the owner and gets a 🔒 button at the top of the remote. Pressing it:
+
+- pauses any playing video (Netflix, YouTube, the media player…) and freezes games,
+- covers the TV with a "Screen locked" message,
+- blocks every phone's remote (including the owner's) until the owner presses **Unlock**.
+
+Other phones see "Screen locked" and can't unlock it. If the owner phone is lost, run `sudo pivista unlock` on the Pi. Removing all paired remotes also unlocks the TV.
+
+### Settings
+
+| Section | Settings |
+|---|---|
+| General | Language (English/Türkçe), device name, start on boot, opening animation, screensaver |
+| Sound | Output (HDMI / audio jack / USB speakers / Bluetooth, whatever is connected), volume |
+| Display | Screen resolution (1080p, 720p, monitor default), 4K for the media player, 24-hour clock |
+| Network & time | Wi‑Fi (scan, connect; password typed on the phone), date & time, automatic time, time zone search |
+| Apps | YouTube ad blocker |
+| Remotes | Pair a new remote, forget all remotes |
+| System | CPU slow-down temperature, update PiVista, restart, reboot, shut down |
+
+**Sound:** PiVista prefers HDMI, so the sound comes out of the TV or monitor. If your monitor has no speakers, plug headphones or speakers into the 3.5 mm jack, or plug in USB speakers, then choose them in **Settings → Sound output**. The choice is remembered.
+
+**Network change:** when the Pi joins a different Wi‑Fi or gets a new IP address, the TV opens the pairing screen with the new address and dot pattern so phones can connect again.
+
 ### When `pivista.local` doesn't open (mDNS fallback)
 
 Some phones and routers can't resolve `.local` names (older Android versions, guest Wi-Fi, some mesh systems). PiVista always gives you a direct route:
@@ -220,6 +250,7 @@ pivista disable    # don't start on boot (server + remote keep running)
 pivista enable     # start on boot again
 pivista doctor     # diagnose a black screen / problems, saves /tmp/pivista-doctor.txt
 pivista update     # download and install the latest version from the code branch
+pivista unlock     # unlock the TV if the owner phone is lost
 pivista uninstall  # remove services and boot tweaks (keeps /opt/pivista and your settings)
 ```
 
@@ -324,7 +355,7 @@ packaging Debian package build
 
 `.github/workflows/build.yml` runs on every push (any branch, including `claude/kind-mccarthy-xql5k2`) and on pull requests. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
 
-## Known limitations (v0.4)
+## Known limitations (v0.5)
 
 - Streaming services can change their web apps or block unusual user agents at any time. If one breaks, try a different user agent in `server/apps.js`.
 - Netflix/Max/Disney+ web players are made for mouse use. Use the D-pad where it works and the touchpad tab for the rest.

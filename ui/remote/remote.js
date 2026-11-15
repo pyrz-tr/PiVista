@@ -62,6 +62,8 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.t === 'res' && pending.has(m.id)) { pending.get(m.id)(m.error ? { error: m.error } : (m.data ?? {})); pending.delete(m.id); return; }
     if (m.t === 'hello' || m.t === 'settings') { if (m.settings && PVI18N.set(m.settings.language || 'en')) { loadApps(); $('#conn').textContent = t('connected'); } }
+    if (m.t === 'hello') { owner = !!m.owner; $('#lock-btn').classList.toggle('hidden', !owner); }
+    if (m.t === 'hello' || m.t === 'lock') renderLock(m.t === 'hello' ? m.lock : m);
     if (m.t === 'hello' || m.t === 'state') setState(m.state);
     if (m.t === 'apps') renderApps(m.apps);
     if (m.t === 'kbd') onTvField(m);
@@ -90,6 +92,25 @@ async function start() {
   $('#pair-view').classList.add('hidden'); $('#remote-view').classList.remove('hidden');
   connect();
 }
+
+// ---------- screen lock (only the first paired phone may lock/unlock) ----------
+let owner = false; let locked = false;
+function renderLock(l) {
+  if (!l) return;
+  locked = !!l.on;
+  $('#locked').classList.toggle('hidden', !locked);
+  $('#locked-by').textContent = l.by ? t('Locked from {name}', { name: l.by }) : '';
+  $('#unlock-btn').classList.toggle('hidden', !owner);
+  $('#locked-note').classList.toggle('hidden', owner);
+  $('#lock-btn').textContent = locked ? '🔓' : '🔒';
+}
+async function setLock(on) {
+  buzz(30);
+  const r = await call('lock', { on });
+  if (r && r.error) alert(t(r.error));
+}
+$('#lock-btn').onclick = () => setLock(!locked);
+$('#unlock-btn').onclick = () => setLock(false);
 
 // ---------- apps ----------
 async function loadApps() { renderApps(await (await fetch('/api/apps')).json()); }

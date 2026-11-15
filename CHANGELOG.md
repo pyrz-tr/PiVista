@@ -2,6 +2,15 @@
 
 All code is on the `claude/kind-mccarthy-xql5k2` branch.
 
+## 0.5.0
+
+- **Sound output**: HDMI (the TV's speakers) is used by default. Settings → Sound output switches to the audio jack, USB speakers or Bluetooth (any PipeWire output), and the choice is remembered. The audio jack is enabled in the boot config (`dtparam=audio=on`). Volume is adjustable in Settings too.
+- **Wi‑Fi settings**: scan and connect (NetworkManager); the password is typed on the phone
+- **Date & time**: automatic time on/off, searchable time-zone list, manual date/time, 24-hour clock
+- **More settings**, grouped into sections: device name, screen resolution (1080p / 720p / monitor default), Update PiVista
+- **Screen lock** (first paired phone only): pauses video, the media player and games, shows a lock screen on the TV and blocks all remotes until unlocked. `sudo pivista unlock` as an emergency fallback.
+- **Network change** (new Wi‑Fi or new IP, also across reboots) → the TV shows the pairing screen again
+
 ## 0.4.0
 
 - **Fix: Netflix, HBO Max, Disney+ (and other zoomed apps) only filled the top-left of the screen, with white around it.** The per-app TV zoom used device-metrics emulation, which in a real window only shrinks the page. It now uses real browser zoom through a small built-in Chromium extension (`system/zoom-extension`, asks `GET /api/zoom`), so pages re-layout and fill the screen. Phone Screen-tab taps are mapped for the zoom.

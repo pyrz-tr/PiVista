@@ -2,6 +2,8 @@
 # --- Graphics: full KMS driver, larger CMA pool for 4K hardware video decode buffers
 dtoverlay=vc4-kms-v3d,cma-512
 max_framebuffers=2
+# --- Sound: HDMI audio (default output) + the 3.5 mm audio jack as an option in Settings → Sound output
+dtparam=audio=on
 # --- HDMI: always drive HDMI even if the monitor is off / slow to wake at boot
 hdmi_force_hotplug=1
 disable_overscan=1

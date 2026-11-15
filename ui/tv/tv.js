@@ -332,36 +332,142 @@ screens.pair = {
 };
 
 // ---------- Settings
+// Generic text entry screen (phone keyboard pops up automatically): used for names, passwords, time.
+screens.prompt = {
+  opts: null,
+  open(opts) { this.opts = opts; show('prompt'); },
+  enter() {
+    const o = this.opts || {};
+    $('#prompt-title').textContent = t(o.title || '');
+    $('#prompt-sub').textContent = o.sub ? t(o.sub) : '';
+    const f = $('#prompt-input'); f.value = o.value || ''; f.type = o.password ? 'password' : 'text'; f.placeholder = o.placeholder ? t(o.placeholder) : '';
+    $('#prompt-ok').textContent = t(o.ok || 'Save');
+    $('#prompt-msg').textContent = '';
+  },
+  async submit() {
+    const o = this.opts || {}; const v = $('#prompt-input').value;
+    $('#prompt-msg').textContent = t(o.busy || 'Saving…');
+    try { await o.onSubmit(v); back(); } catch (e) { $('#prompt-msg').textContent = e.message || String(e); }
+  },
+};
+$('#prompt-ok').onclick = () => screens.prompt.submit();
+$('#prompt-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') screens.prompt.submit(); });
+const must = (r) => { if (!r || r.error) throw new Error(t((r && r.error) || 'No answer from PiVista')); return r; };
+
 screens.settings = {
   async enter() {
     settings = (await rpc.call('settings')) || settings;
-    const p = await rpc.call('pairInfo');
+    const [p, outs, vol, net, tm] = await Promise.all([rpc.call('pairInfo'), rpc.call('audioOutputs'), rpc.call('getVolume'), rpc.call('network'), rpc.call('timeInfo')]);
     const yes = (v) => t(v ? 'On' : 'Off');
     const cycle = (key, opts) => () => this.set({ [key]: opts[(opts.indexOf(settings[key]) + 1) % opts.length] });
     const withHint = (a, h) => { const s = el('span', '', t(a)); s.append(el('span', 'hint', t(h))); return [s]; };
+    const outList = Array.isArray(outs) ? outs : [];
+    const curOut = outList.find((o) => o.default);
+    const kindName = (o) => (o ? t({ hdmi: 'HDMI (TV speakers)', jack: 'Audio jack', usb: 'USB speakers', bluetooth: 'Bluetooth' }[o.kind] || o.name) : t('No sound device found'));
+    const res = settings.uiResolution || '1920x1080';
     const rows = [
+      ['§', 'General'],
       ['Language', (PVI18N.languages.find((l) => l.id === (settings.language || 'en')) || {}).name, cycle('language', PVI18N.languages.map((l) => l.id))],
+      ['Device name', settings.deviceName || 'PiVista', () => screens.prompt.open({ title: 'Device name', sub: 'Shown on paired phones.', value: settings.deviceName,
+        onSubmit: async (v) => { must(await rpc.call('setSettings', { patch: { deviceName: v.trim().slice(0, 30) || 'PiVista' } })); } })],
       ['Start PiVista on boot', yes(settings.autostart), () => this.set({ autostart: !settings.autostart })],
-      [withHint('Block YouTube ads', 'Turn off if you have YouTube Premium or anything misbehaves'), yes(settings.youtubeAdblock), () => this.set({ youtubeAdblock: !settings.youtubeAdblock })],
-      ['Allow 4K output for media player', yes(settings.allow4k), () => this.set({ allow4k: !settings.allow4k })],
       ['Opening animation', yes(settings.showSplash), () => this.set({ showSplash: !settings.showSplash })],
       ['Screensaver after', settings.screensaverMinutes ? t('{n} min', { n: settings.screensaverMinutes }) : t('Never'), cycle('screensaverMinutes', [5, 15, 30, 60, 0])],
-      ['CPU slow-down temperature', settings.thermalLimitC + ' °C', cycle('thermalLimitC', [70, 75, 80])],
+      ['§', 'Sound'],
+      [withHint('Sound output', outList.length > 1 ? 'Press OK to switch between HDMI, audio jack and USB speakers' : 'Plug in USB speakers or use the audio jack to get more choices'), kindName(curOut),
+        async () => { if (outList.length < 2) return; const i = outList.indexOf(curOut); const next = outList[(i + 1) % outList.length]; must(await rpc.call('setAudioOutput', { id: next.id })); toast(t('Sound output: {name}', { name: kindName(next) })); this.enter(); }],
+      ['Volume', vol ? (vol.muted ? t('Muted') : vol.level + '%') : '—', async () => { const lv = vol ? vol.level : 0; await rpc.call('setVolume', { p: lv >= 100 ? 0 : Math.min(100, Math.round(lv / 10) * 10 + 10) }); this.enter(); }],
+      ['§', 'Display'],
+      ['Screen resolution', { auto: t('Monitor default'), '1920x1080': '1080p', '1280x720': '720p' }[res], async () => {
+        const order = ['1920x1080', '1280x720', 'auto']; must(await rpc.call('setResolution', { v: order[(order.indexOf(res) + 1) % order.length] })); this.enter(); }],
+      ['Allow 4K output for media player', yes(settings.allow4k), () => this.set({ allow4k: !settings.allow4k })],
+      ['24-hour clock', yes(settings.clock24 !== false), () => this.set({ clock24: settings.clock24 === false })],
+      ['§', 'Network & time'],
+      ['Wi‑Fi', net && net.ssid ? net.ssid : net && net.ethernet ? t('Ethernet') : t('Not connected'), () => show('wifi')],
+      ['Date & time', tm ? `${new Date().toLocaleString(PVI18N.lang, { dateStyle: 'medium', timeStyle: 'short', hour12: settings.clock24 === false })} · ${tm.timezone}` : '', () => show('datetime')],
+      ['§', 'Apps'],
+      [withHint('Block YouTube ads', 'Turn off if you have YouTube Premium or anything misbehaves'), yes(settings.youtubeAdblock), () => this.set({ youtubeAdblock: !settings.youtubeAdblock })],
+      ['§', 'Remotes'],
       ['Pair a new remote', '', () => show('pair')],
       ['Forget all paired remotes', t('{n} paired', { n: p ? p.devices.length : 0 }), async () => { await rpc.call('forget', {}); toast(t('All remotes removed')); this.enter(); }],
+      ['§', 'System'],
+      ['CPU slow-down temperature', settings.thermalLimitC + ' °C', cycle('thermalLimitC', [70, 75, 80])],
+      ['Update PiVista', '', async () => { await rpc.call('update'); toast(t('Updating… PiVista restarts by itself when done')); }],
       ['Restart interface', '', () => rpc.call('power', { v: 'restart-ui' })],
       ['Reboot', '', () => rpc.call('power', { v: 'reboot' }), 'danger'],
       ['Shut down', '', () => rpc.call('power', { v: 'shutdown' }), 'danger'],
     ];
     const focusedIdx = $$('#settings-list .item').indexOf(document.activeElement);
-    const list = $('#settings-list'); list.innerHTML = '';
-    rows.forEach(([label, val, fn, cls], n) => {
+    const list = $('#settings-list'); list.innerHTML = ''; let n = 0;
+    for (const [label, val, fn, cls] of rows) {
+      if (label === '§') { list.append(el('div', 'section', t(val))); continue; }
       const i = item(typeof label === 'string' ? t(label) : label, val, fn, cls); list.append(i);
-      if (n === focusedIdx) setTimeout(() => i.focus({ preventScroll: true }));
-    });
+      if (n === focusedIdx) setTimeout(() => { i.focus({ preventScroll: true }); i.scrollIntoView({ block: 'nearest' }); });
+      n++;
+    }
   },
   async set(patch) { settings = await rpc.call('setSettings', { patch }); await this.enter(); },
 };
+
+screens.wifi = {
+  async enter() {
+    const list = $('#wifi-list'); list.innerHTML = '';
+    list.append(el('div', 'item empty', t('Searching for networks…')));
+    const [nets, net] = await Promise.all([rpc.call('wifiScan', {}, 25000), rpc.call('network')]);
+    $('#wifi-status').textContent = net ? (net.ssid ? t('Connected to {ssid}', { ssid: net.ssid }) : net.ethernet ? t('Connected with an Ethernet cable') : t('Not connected')) + (net.ips.length ? ' · ' + net.ips.join(', ') : '') : '';
+    list.innerHTML = '';
+    list.append(item('⟳  ' + t('Search again'), '', () => this.enter().then(focusFirst)));
+    if (!Array.isArray(nets)) { list.append(el('div', 'item empty', t('Wi‑Fi is not available on this system'))); return; }
+    if (!nets.length) list.append(el('div', 'item empty', t('No networks found')));
+    for (const n of nets) {
+      const bars = n.signal > 75 ? '▂▄▆█' : n.signal > 50 ? '▂▄▆' : n.signal > 25 ? '▂▄' : '▂';
+      list.append(item((n.active ? '✓  ' : '') + n.ssid, `${n.secure ? '🔒 ' : ''}${bars}`, () => {
+        if (n.active) return;
+        const connect = async (pw) => {
+          toast(t('Connecting to {ssid}…', { ssid: n.ssid }));
+          const r = must(await rpc.call('wifiConnect', { ssid: n.ssid, password: pw }, 50000));
+          if (!r.ok) throw new Error(t('Could not connect: {err}', { err: r.error || '' }));
+          toast(t('Connected to {ssid}', { ssid: n.ssid }));
+        };
+        if (!n.secure) connect('').then(() => this.enter()).catch((e) => toast(e.message));
+        else screens.prompt.open({ title: n.ssid, sub: 'Type the Wi‑Fi password on your phone.', password: true, ok: 'Connect', busy: 'Connecting…', placeholder: 'Password', onSubmit: connect });
+      }));
+    }
+  },
+};
+
+screens.datetime = {
+  async enter() {
+    const tm = (await rpc.call('timeInfo')) || {};
+    const list = $('#dt-list'); list.innerHTML = '';
+    const yes = (v) => t(v ? 'On' : 'Off');
+    const rows = [
+      ['Current time', new Date().toLocaleString(PVI18N.lang, { dateStyle: 'full', timeStyle: 'short', hour12: settings.clock24 === false }), null],
+      ['Set time automatically', yes(tm.ntp) + (tm.ntp ? ' · ' + t(tm.synced ? 'synchronised' : 'waiting for internet') : ''), async () => { must(await rpc.call('setNtp', { on: !tm.ntp })); this.enter(); }],
+      ['Time zone', tm.timezone || '—', () => show('timezone')],
+      ['Set date & time manually', '', () => {
+        const d = new Date(); const pad = (x) => String(x).padStart(2, '0');
+        screens.prompt.open({ title: 'Set date & time manually', sub: 'Format: YYYY-MM-DD HH:MM (turns automatic time off)', placeholder: 'YYYY-MM-DD HH:MM',
+          value: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
+          onSubmit: async (v) => { must(await rpc.call('setTime', { v })); tick(); } });
+      }],
+      ['24-hour clock', yes(settings.clock24 !== false), async () => { settings = await rpc.call('setSettings', { patch: { clock24: settings.clock24 === false } }); tick(); this.enter(); }],
+    ];
+    for (const [label, val, fn] of rows) { const i = item(t(label), val, fn || (() => {})); if (!fn) i.classList.remove('focusable'); list.append(i); }
+  },
+};
+
+screens.timezone = {
+  async enter() { $('#tz-filter').value = ''; await this.load(''); },
+  async load(q) {
+    const zones = (await rpc.call('timezones', { q })) || [];
+    const list = $('#tz-list'); list.innerHTML = '';
+    if (!zones.length) list.append(el('div', 'item empty', t('No matching time zone')));
+    zones.slice(0, 40).forEach((z) => list.append(item(z.replace(/_/g, ' '), '', async () => { must(await rpc.call('setTimezone', { tz: z })); toast(t('Time zone: {tz}', { tz: z })); tick(); back(); })));
+  },
+};
+let tzTimer = null;
+$('#tz-filter').addEventListener('input', (e) => { clearTimeout(tzTimer); tzTimer = setTimeout(() => screens.timezone.load(e.target.value), 250); });
 
 // ---------------------------------------------------------------- toasts, clock, screensaver
 function toast(msg) {
@@ -370,7 +476,7 @@ function toast(msg) {
 }
 function tick() {
   const d = new Date();
-  const hh = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const hh = d.toLocaleTimeString(PVI18N.lang, { hour: '2-digit', minute: '2-digit', hour12: settings.clock24 === false });
   $('#clock').textContent = hh; $('#ss-clock').textContent = hh;
   const h = d.getHours();
   $('#greeting').textContent = t(h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
@@ -413,6 +519,7 @@ function setRemotes(n) {
 rpc.on((m) => {
   if (m.t === 'hello' || m.t === 'settings') { settings = m.settings; setLanguage(settings.language); }
   if (m.t === 'apps') { apps = m.apps; renderHome(); }
+  if (m.t === 'network-changed') { toast(t('Network changed: pair your phone again')); show('pair'); rpc.call('ackNetwork'); }
   if (m.t === 'paired') {
     toast(t('📱 {name} connected as remote', { name: m.name }));
     rpc.call('pairInfo').then((p) => p && setRemotes(p.devices.length));
@@ -439,7 +546,8 @@ setInterval(refreshStatus, 30000);
   const p = await rpc.call('pairInfo');
   if (p) setRemotes(p.devices.length);
   await loadApps();
-  const start = location.hash.slice(1) || (p && !p.devices.length ? 'pair' : 'home');
+  const start = location.hash.slice(1) || (p && (!p.devices.length || p.networkChanged) ? 'pair' : 'home');
+  if (p && p.networkChanged) rpc.call('ackNetwork');
   if (start !== 'home') stack.push('home');
   show(start, false);
 })();

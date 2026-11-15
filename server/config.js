@@ -15,6 +15,8 @@ const DEFAULT_SETTINGS = {
   showSplash: true,
   screensaverMinutes: 15,
   youtubeAdblock: false,     // opt-in; leave off if you have YouTube Premium
+  clock24: true,             // 24-hour clock on the TV
+  audioOutput: null,         // preferred sound output name (null = HDMI if available)
   language: 'en',            // 'en' | 'tr' — TV, phone remotes and games follow it
 };
 

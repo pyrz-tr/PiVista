@@ -1,5 +1,5 @@
 #!/bin/bash
-# PiVista control: pivista {start|stop|restart|enable|disable|status|logs|doctor|update|uninstall}
+# PiVista control: pivista {start|stop|restart|enable|disable|status|logs|doctor|update|unlock|uninstall}
 set -e
 BRANCH="${PIVISTA_BRANCH:-claude/kind-mccarthy-xql5k2}"
 need_root() { [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"; }
@@ -20,6 +20,7 @@ case "$1" in
   update)    need_root "$@"
              curl -fsSL "https://raw.githubusercontent.com/pyrz-tr/PiVista/${BRANCH}/scripts/install.sh?$(date +%s)" \
                | PIVISTA_BRANCH="$BRANCH" bash -s -- --keep-hostname ;;
+  unlock)    curl -fsS -X POST -H 'x-pivista-cli: 1' http://127.0.0.1/api/unlock && echo " → TV unlocked" ;;
   uninstall) need_root "$@"; /opt/pivista/scripts/uninstall.sh ;;
-  *) echo "usage: pivista {start|stop|restart|enable|disable|status|logs|doctor|update|uninstall}"; exit 1 ;;
+  *) echo "usage: pivista {start|stop|restart|enable|disable|status|logs|doctor|update|unlock|uninstall}"; exit 1 ;;
 esac

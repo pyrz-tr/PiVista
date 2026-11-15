@@ -113,6 +113,13 @@ function key(k) {
 
 function seekTo(seconds) { ipc(['seek', Number(seconds) || 0, 'absolute']).then(refresh); }
 function stop() { if (proc) proc.kill('SIGTERM'); }
+// Screen lock: pause and show a message on the video (mpv draws above the browser).
+let lockedPause = false;
+async function lock(on, text) {
+  if (!proc) return;
+  if (on) { const paused = await ipc(['get_property', 'pause']); lockedPause = !paused; await ipc(['set_property', 'pause', true]); ipc(['show-text', '🔒 ' + text, 86400000]); }
+  else { ipc(['show-text', '', 1]); if (lockedPause) ipc(['set_property', 'pause', false]); lockedPause = false; }
+}
 
-module.exports = { list, play, stop, key, seekTo, recent: () => cfg.state.recentMedia,
+module.exports = { list, play, stop, key, seekTo, lock, recent: () => cfg.state.recentMedia,
   get active() { return !!proc; }, get now() { return now; }, set onChange(fn) { onChange = fn; } };

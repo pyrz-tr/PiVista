@@ -46,6 +46,28 @@ const PVI18N = (() => {
     'Bounce the ball and smash every brick. Levels get tougher.': 'Topu sektir ve tüm tuğlaları kır. Bölümler zorlaşır.',
     'Slide the tiles and merge matching numbers. Reach 2048!': 'Karoları kaydır, aynı sayıları birleştir. 2048’e ulaş!',
 
+    'General': 'Genel', 'Sound': 'Ses', 'Display': 'Ekran', 'Network & time': 'Ağ ve saat', 'Apps': 'Uygulamalar', 'Remotes': 'Kumandalar',
+    'Device name': 'Cihaz adı', 'Shown on paired phones.': 'Eşli telefonlarda görünür.', 'Save': 'Kaydet', 'Saving…': 'Kaydediliyor…',
+    'Sound output': 'Ses çıkışı', 'HDMI (TV speakers)': 'HDMI (TV hoparlörleri)', 'Audio jack': 'Kulaklık girişi', 'USB speakers': 'USB hoparlör',
+    'Bluetooth': 'Bluetooth', 'No sound device found': 'Ses cihazı bulunamadı', 'Sound output: {name}': 'Ses çıkışı: {name}',
+    'Press OK to switch between HDMI, audio jack and USB speakers': 'HDMI, kulaklık girişi ve USB hoparlör arasında geçmek için OK’e basın',
+    'Plug in USB speakers or use the audio jack to get more choices': 'Daha fazla seçenek için USB hoparlör takın veya kulaklık girişini kullanın',
+    'Volume': 'Ses düzeyi', 'Muted': 'Sessiz', 'Screen resolution': 'Ekran çözünürlüğü', 'Monitor default': 'Monitör varsayılanı', '24-hour clock': '24 saat biçimi',
+    'Wi‑Fi': 'Wi‑Fi', 'Ethernet': 'Ethernet', 'Not connected': 'Bağlı değil', 'Date & time': 'Tarih ve saat', 'Update PiVista': 'PiVista’yı güncelle',
+    'Updating… PiVista restarts by itself when done': 'Güncelleniyor… Bitince PiVista kendiliğinden yeniden başlar',
+    'Searching for networks…': 'Ağlar aranıyor…', 'Connected to {ssid}': '{ssid} ağına bağlı', 'Connected with an Ethernet cable': 'Ethernet kablosuyla bağlı',
+    'Search again': 'Yeniden ara', 'Wi‑Fi is not available on this system': 'Bu sistemde Wi‑Fi kullanılamıyor', 'No networks found': 'Ağ bulunamadı',
+    'Connecting to {ssid}…': '{ssid} ağına bağlanılıyor…', 'Could not connect: {err}': 'Bağlanılamadı: {err}', 'Type the Wi‑Fi password on your phone.': 'Wi‑Fi şifresini telefonunuzdan yazın.',
+    'Connect': 'Bağlan', 'Connecting…': 'Bağlanılıyor…', 'Password': 'Şifre', 'Current time': 'Şu anki saat', 'Set time automatically': 'Saati otomatik ayarla',
+    'synchronised': 'eşitlendi', 'waiting for internet': 'internet bekleniyor', 'Time zone': 'Saat dilimi', 'Set date & time manually': 'Tarih ve saati elle ayarla',
+    'Format: YYYY-MM-DD HH:MM (turns automatic time off)': 'Biçim: YYYY-AA-GG SS:DD (otomatik saati kapatır)', 'No matching time zone': 'Eşleşen saat dilimi yok',
+    'Time zone: {tz}': 'Saat dilimi: {tz}', 'Search: city or region (e.g. Istanbul)': 'Ara: şehir veya bölge (örn. Istanbul)', 'No answer from PiVista': 'PiVista yanıt vermedi',
+    'Network changed: pair your phone again': 'Ağ değişti: telefonunuzu yeniden eşleyin', 'Use the format YYYY-MM-DD HH:MM': 'YYYY-AA-GG SS:DD biçimini kullanın',
+    'Could not set the time': 'Saat ayarlanamadı', 'Unknown time zone': 'Bilinmeyen saat dilimi',
+    'Screen locked': 'Ekran kilitli', 'Locked from {name}': '{name} tarafından kilitlendi', 'Unlock': 'Kilidi aç',
+    'Only the first paired phone can unlock the TV.': 'TV’nin kilidini yalnızca ilk eşlenen telefon açabilir.',
+    'Only the first paired phone can lock the screen': 'Ekranı yalnızca ilk eşlenen telefon kilitleyebilir', 'locked': 'Ekran kilitli',
+
     // ---- phone remote
     'Scan the dot pattern on your TV with your phone camera, or type the 6-digit code shown on screen.': 'TV’deki nokta desenini telefon kameranızla okutun veya ekrandaki 6 haneli kodu yazın.',
     'Pair': 'Eşle', 'Page won\'t load from <i>pivista.local</i>? Use the IP address shown at the top of the TV screen, or scan the small “direct” pattern.':

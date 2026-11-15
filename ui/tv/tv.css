@@ -103,3 +103,8 @@ h2 { font-size: 28px; margin: 34px 0 18px; color: var(--muted); font-weight: 600
 #offline { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); background: #7f1d1d; color: #fff; padding: 16px 30px;
   border-radius: 16px; font-size: 26px; z-index: 60; display: none; box-shadow: 0 10px 40px #000a; }
 #offline.on { display: block; }
+
+/* settings sections */
+.list .section { font-size: 22px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin: 18px 0 2px 8px; }
+.list .section:first-child { margin-top: 0; }
+.list.tall { overflow-y: hidden; }
