@@ -64,6 +64,7 @@ function connect() {
     if (m.t === 'hello' || m.t === 'settings') { if (m.settings && PVI18N.set(m.settings.language || 'en')) { loadApps(); $('#conn').textContent = t('connected'); } }
     if (m.t === 'hello') { owner = !!m.owner; $('#lock-btn').classList.toggle('hidden', !owner); }
     if (m.t === 'hello' || m.t === 'lock') renderLock(m.t === 'hello' ? m.lock : m);
+    if (m.t === 'hello' || m.t === 'desktop') renderDesktop(m.t === 'hello' ? m.desktop : m.on);
     if (m.t === 'hello' || m.t === 'state') setState(m.state);
     if (m.t === 'apps') renderApps(m.apps);
     if (m.t === 'kbd') onTvField(m);
@@ -110,6 +111,19 @@ async function setLock(on) {
   if (r && r.error) alert(t(r.error));
 }
 $('#lock-btn').onclick = () => setLock(!locked);
+
+// ---------- desktop mode: PiVista closed on the TV; the owner phone can open it again ----------
+function renderDesktop(on) {
+  $('#desktop').classList.toggle('hidden', !on);
+  $('#tv-btn').classList.toggle('hidden', !owner);
+  $('#desktop-note').classList.toggle('hidden', owner);
+}
+$('#tv-btn').onclick = async () => {
+  buzz(30); $('#tv-btn').disabled = true;
+  const r = await call('returnToTv', {}, 30000);
+  $('#tv-btn').disabled = false;
+  if (r && r.error) alert(t(r.error));
+};
 $('#unlock-btn').onclick = () => setLock(false);
 
 // ---------- apps ----------

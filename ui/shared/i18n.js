@@ -68,6 +68,24 @@ const PVI18N = (() => {
     'Only the first paired phone can unlock the TV.': 'TV’nin kilidini yalnızca ilk eşlenen telefon açabilir.',
     'Only the first paired phone can lock the screen': 'Ekranı yalnızca ilk eşlenen telefon kilitleyebilir', 'locked': 'Ekran kilitli',
 
+    'Cancel': 'İptal', 'Please wait…': 'Lütfen bekleyin…', 'Downloads the newest version from GitHub and installs it': 'En yeni sürümü GitHub’dan indirip kurar',
+    'Could not check: {err}': 'Kontrol edilemedi: {err}', 'Update available (v{v})': 'Güncelleme var (v{v})', 'v{v} · up to date': 'v{v} · güncel',
+    'GitHub access token': 'GitHub erişim anahtarı', 'Only needed if the PiVista repository is private': 'Yalnızca PiVista deposu gizliyse gerekir',
+    'Saved': 'Kayıtlı', 'Not set': 'Ayarlanmadı',
+    'Paste a fine-grained token with read access to the repository. Leave empty to remove it.': 'Depoyu okuma izni olan bir “fine-grained” anahtar yapıştırın. Silmek için boş bırakın.',
+    'Exit to desktop': 'Masaüstüne çık', 'Closes PiVista. The first paired phone can open it again.': 'PiVista’yı kapatır. İlk eşlenen telefon yeniden açabilir.',
+    'Exit to desktop?': 'Masaüstüne çıkılsın mı?',
+    'PiVista closes and the desktop appears. To come back, press “Open PiVista” on the first paired phone.': 'PiVista kapanır ve masaüstü açılır. Geri dönmek için ilk eşlenen telefonda “PiVista’yı aç”a basın.',
+    'Update PiVista now?': 'PiVista şimdi güncellensin mi?', 'Update now': 'Şimdi güncelle', 'Updating…': 'Güncelleniyor…',
+    'Version {v} is available. PiVista restarts by itself after the update (about 1–3 minutes).': '{v} sürümü hazır. Güncellemeden sonra PiVista kendiliğinden yeniden başlar (yaklaşık 1–3 dakika).',
+    'PiVista seems up to date. Install the newest version again anyway?': 'PiVista güncel görünüyor. En yeni sürüm yine de yeniden kurulsun mu?',
+    'PiVista is closed': 'PiVista kapalı', 'The TV is showing the desktop.': 'TV masaüstünü gösteriyor.', 'Open PiVista': 'PiVista’yı aç',
+    'Only the first paired phone can open PiVista again.': 'PiVista’yı yalnızca ilk eşlenen telefon yeniden açabilir.',
+    'Only the first paired phone can do this': 'Bunu yalnızca ilk eşlenen telefon yapabilir', 'Only the first paired phone can open PiVista again': 'PiVista’yı yalnızca ilk eşlenen telefon yeniden açabilir',
+    'That does not look like a GitHub token': 'Bu bir GitHub anahtarına benzemiyor',
+    'Repository not found: if it is private, add a GitHub access token': 'Depo bulunamadı: gizliyse bir GitHub erişim anahtarı ekleyin',
+    'GitHub refused the token (check that it can read the repository)': 'GitHub anahtarı reddetti (depoyu okuyabildiğini kontrol edin)',
+
     // ---- phone remote
     'Scan the dot pattern on your TV with your phone camera, or type the 6-digit code shown on screen.': 'TV’deki nokta desenini telefon kameranızla okutun veya ekrandaki 6 haneli kodu yazın.',
     'Pair': 'Eşle', 'Page won\'t load from <i>pivista.local</i>? Use the IP address shown at the top of the TV screen, or scan the small “direct” pattern.':

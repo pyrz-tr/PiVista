@@ -354,6 +354,21 @@ $('#prompt-ok').onclick = () => screens.prompt.submit();
 $('#prompt-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') screens.prompt.submit(); });
 const must = (r) => { if (!r || r.error) throw new Error(t((r && r.error) || 'No answer from PiVista')); return r; };
 
+screens.confirm = {
+  opts: null,
+  open(opts) { this.opts = opts; show('confirm'); },
+  enter() {
+    const o = this.opts || {};
+    $('#confirm-title').textContent = t(o.title || ''); $('#confirm-sub').textContent = o.sub ? t(o.sub) : '';
+    $('#confirm-ok').textContent = t(o.ok || 'OK'); $('#confirm-cancel').textContent = t('Cancel'); $('#confirm-msg').textContent = '';
+  },
+};
+$('#confirm-cancel').onclick = () => back();
+$('#confirm-ok').onclick = async () => {
+  const o = screens.confirm.opts || {};
+  try { $('#confirm-msg').textContent = t('Please wait…'); await o.onConfirm(); if (!o.stay) back(); } catch (e) { $('#confirm-msg').textContent = e.message || String(e); }
+};
+
 screens.settings = {
   async enter() {
     settings = (await rpc.call('settings')) || settings;
@@ -361,6 +376,15 @@ screens.settings = {
     const yes = (v) => t(v ? 'On' : 'Off');
     const cycle = (key, opts) => () => this.set({ [key]: opts[(opts.indexOf(settings[key]) + 1) % opts.length] });
     const withHint = (a, h) => { const s = el('span', '', t(a)); s.append(el('span', 'hint', t(h))); return [s]; };
+    if (!this.updateLabel && !this.checking) {
+      this.checking = true;
+      rpc.call('checkUpdate', {}, 20000).then((u) => {
+        this.checking = false;
+        if (!u || u.error) { this.updateLabel = t('Could not check: {err}', { err: (u && u.error) || 'timeout' }); this.tokenSet = u && u.tokenSet; }
+        else { this.version = u.current; this.tokenSet = u.tokenSet; this.update = u; this.updateLabel = u.available ? t('Update available (v{v})', { v: u.latest }) : t('v{v} · up to date', { v: u.current }); }
+        if ($('#settings.active')) this.enter();
+      });
+    }
     const outList = Array.isArray(outs) ? outs : [];
     const curOut = outList.find((o) => o.default);
     const kindName = (o) => (o ? t({ hdmi: 'HDMI (TV speakers)', jack: 'Audio jack', usb: 'USB speakers', bluetooth: 'Bluetooth' }[o.kind] || o.name) : t('No sound device found'));
@@ -392,7 +416,13 @@ screens.settings = {
       ['Forget all paired remotes', t('{n} paired', { n: p ? p.devices.length : 0 }), async () => { await rpc.call('forget', {}); toast(t('All remotes removed')); this.enter(); }],
       ['§', 'System'],
       ['CPU slow-down temperature', settings.thermalLimitC + ' °C', cycle('thermalLimitC', [70, 75, 80])],
-      ['Update PiVista', '', async () => { await rpc.call('update'); toast(t('Updating… PiVista restarts by itself when done')); }],
+      [withHint('Update PiVista', 'Downloads the newest version from GitHub and installs it'), this.updateLabel || ('v' + (this.version || '')), () => this.askUpdate()],
+      [withHint('GitHub access token', 'Only needed if the PiVista repository is private'), t(this.tokenSet ? 'Saved' : 'Not set'), () => screens.prompt.open({
+        title: 'GitHub access token', sub: 'Paste a fine-grained token with read access to the repository. Leave empty to remove it.', password: true, placeholder: 'github_pat_…',
+        onSubmit: async (v) => { must(await rpc.call('setGithubToken', { token: v })); this.updateLabel = ''; } })],
+      [withHint('Exit to desktop', 'Closes PiVista. The first paired phone can open it again.'), '', () => screens.confirm.open({
+        title: 'Exit to desktop?', sub: 'PiVista closes and the desktop appears. To come back, press “Open PiVista” on the first paired phone.', ok: 'Exit to desktop', stay: true,
+        onConfirm: async () => { must(await rpc.call('exitToDesktop')); } }), 'danger'],
       ['Restart interface', '', () => rpc.call('power', { v: 'restart-ui' })],
       ['Reboot', '', () => rpc.call('power', { v: 'reboot' }), 'danger'],
       ['Shut down', '', () => rpc.call('power', { v: 'shutdown' }), 'danger'],
@@ -407,6 +437,15 @@ screens.settings = {
     }
   },
   async set(patch) { settings = await rpc.call('setSettings', { patch }); await this.enter(); },
+  askUpdate() {
+    const u = this.update;
+    screens.confirm.open({
+      title: 'Update PiVista now?',
+      sub: u && u.available ? t('Version {v} is available. PiVista restarts by itself after the update (about 1–3 minutes).', { v: u.latest }) : 'PiVista seems up to date. Install the newest version again anyway?',
+      ok: 'Update now',
+      onConfirm: async () => { must(await rpc.call('startUpdate')); toast(t('Updating… PiVista restarts by itself when done')); this.updateLabel = t('Updating…'); },
+    });
+  },
 };
 
 screens.wifi = {

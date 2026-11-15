@@ -163,7 +163,6 @@ const sys = {
 
   // ---------------- display + updates
   setResolution(res) { return res === 'auto' ? asKiosk('wlr-randr', ['--output', outputName(), '--preferred']) : sys.setMode(res); },
-  update() { return run('systemd-run', ['--unit=pivista-update-' + Date.now(), '--collect', '/usr/local/bin/pivista', 'update']); },
   run, asKiosk,
 };
 

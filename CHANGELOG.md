@@ -2,6 +2,11 @@
 
 All code is on the `claude/kind-mccarthy-xql5k2` branch.
 
+## 0.6.0
+
+- **Update button** in Settings → System: shows whether a new version is available and installs it after confirmation. Updates go through the GitHub API (`system/update.sh`), so they **also work for a private repository** once a GitHub token is saved (Settings → System → GitHub access token; stored root-only on the Pi, never sent to phones). `pivista update` uses the same updater.
+- **Exit to desktop** (Settings → System, with confirmation; Cancel is selected by default): closes PiVista and shows the Raspberry Pi desktop (or the console on Lite). The first paired phone gets an **Open PiVista** button to bring it back; also `pivista desktop` / `pivista tv`.
+
 ## 0.5.0
 
 - **Sound output**: HDMI (the TV's speakers) is used by default. Settings → Sound output switches to the audio jack, USB speakers or Bluetooth (any PipeWire output), and the choice is remembered. The audio jack is enabled in the boot config (`dtparam=audio=on`). Volume is adjustable in Settings too.

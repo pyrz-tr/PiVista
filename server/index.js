@@ -15,6 +15,7 @@ const player = require('./player');
 const adblock = require('./adblock');
 const userapps = require('./userapps');
 const { t: T } = require('./i18n');
+const updater = require('./updater');
 
 const PORT = Number(process.env.PIVISTA_PORT || 80);
 const UI_ROOT = path.join(__dirname, '..', 'ui');
@@ -352,7 +353,26 @@ const handlers = {
     if (!['auto', '1920x1080', '1280x720'].includes(v)) throw new Error('Unsupported resolution');
     cfg.settings.uiResolution = v; cfg.saveSettings(); await sys.setResolution(v === 'auto' ? 'auto' : v + '@60Hz'); return cfg.settings;
   },
-  update: () => sys.update(),
+  // ---- updates (GitHub API; works for private repos with a token saved on the Pi)
+  checkUpdate: () => updater.check(),
+  startUpdate: () => updater.start(),
+  updateStatus: () => updater.status(),
+  setGithubToken: ({ token }) => updater.setToken(token),
+  // ---- desktop mode: close the TV screen and show the normal desktop; the owner phone can bring PiVista back
+  async exitToDesktop(msg, ws) {
+    if (ws.role === 'remote' && !(ws.device && isOwner(ws.device))) throw new Error('Only the first paired phone can do this');
+    desktop.on = true; broadcast({ t: 'desktop', on: true });
+    log('exit to desktop');
+    setTimeout(() => sys.run('/opt/pivista/system/desktop.sh', ['enter']), 300);
+    return { on: true };
+  },
+  async returnToTv(msg, ws) {
+    if (ws.role === 'remote' && !(ws.device && isOwner(ws.device))) throw new Error('Only the first paired phone can open PiVista again');
+    log('back to the TV screen');
+    await sys.run('/opt/pivista/system/desktop.sh', ['leave']);
+    desktop.on = false; broadcast({ t: 'desktop', on: false });
+    return { on: false };
+  },
   ackNetwork() { networkChanged = false; },
   // ---- screen lock (owner phone only)
   lock(msg, ws) {
@@ -365,7 +385,7 @@ const handlers = {
 // Commands only the TV itself may issue.
 const TV_ONLY = new Set(['pairInfo', 'ackNetwork']);
 // While the screen is locked, phones may only read state (and the owner may unlock).
-const LOCK_ALLOWED = new Set(['state', 'apps', 'info', 'settings', 'lock', 'mirror', 'getVolume', 'network', 'timeInfo', 'audioOutputs']);
+const LOCK_ALLOWED = new Set(['returnToTv', 'state', 'apps', 'info', 'settings', 'lock', 'mirror', 'getVolume', 'network', 'timeInfo', 'audioOutputs']);
 
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://x');
@@ -395,7 +415,7 @@ wss.on('connection', (ws, req) => {
       if (!/CDP|ECONNREFUSED|fetch failed/.test(e.message)) log('error', msg.t, e.message);
     }
   });
-  ws.send(JSON.stringify({ t: 'hello', role: ws.role, settings: cfg.settings, state: stateNow(), owner: !!(device && isOwner(device)), lock: lockInfo() }));
+  ws.send(JSON.stringify({ t: 'hello', role: ws.role, settings: cfg.settings, state: stateNow(), owner: !!(device && isOwner(device)), lock: lockInfo(), desktop: desktop.on }));
 });
 
 // ---------- screen lock: the first paired phone (the owner) can lock the TV.
@@ -435,6 +455,16 @@ async function setLock(on, by) {
   broadcast({ t: 'lock', ...lockInfo() });
   return lockInfo();
 }
+
+// ---------- desktop mode (TV screen closed, desktop / console shown). Reconciled at start-up:
+// if the kiosk isn't running while a desktop session is, we are in desktop mode.
+const desktop = { on: false };
+setTimeout(async () => {
+  const kiosk = await sys.run('systemctl', ['is-active', 'pivista-kiosk.service']);
+  const other = await sys.run('sh', ['-c', 'systemctl is-active lightdm gdm3 sddm getty@tty1 2>/dev/null || true']);
+  desktop.on = kiosk !== 'active' && /(^|\n)active/.test(other || '');
+  if (desktop.on) broadcast({ t: 'desktop', on: true });
+}, 4000).unref();
 
 // ---------- network changes: new Wi-Fi / new IP -> show the pairing screen again
 let networkChanged = false;

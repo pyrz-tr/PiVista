@@ -141,6 +141,10 @@ The **first phone that was paired** is the owner and gets a 🔒 button at the t
 
 Other phones see "Screen locked" and can't unlock it. If the owner phone is lost, run `sudo pivista unlock` on the Pi. Removing all paired remotes also unlocks the TV.
 
+### Exit to desktop
+
+Settings → System → **Exit to desktop** (asks for confirmation first, with Cancel selected by default) closes PiVista and shows the normal Raspberry Pi desktop. On Raspberry Pi OS Lite, the login console appears instead. The phone remote shows "PiVista is closed". The **first paired phone** gets an **Open PiVista** button that brings the TV screen back. From a terminal: `sudo pivista tv`. Rebooting starts PiVista as usual.
+
 ### Settings
 
 | Section | Settings |
@@ -151,7 +155,7 @@ Other phones see "Screen locked" and can't unlock it. If the owner phone is lost
 | Network & time | Wi‑Fi (scan, connect; password typed on the phone), date & time, automatic time, time zone search |
 | Apps | YouTube ad blocker |
 | Remotes | Pair a new remote, forget all remotes |
-| System | CPU slow-down temperature, update PiVista, restart, reboot, shut down |
+| System | CPU slow-down temperature, update PiVista, GitHub access token (private repo), exit to desktop, restart, reboot, shut down |
 
 **Sound:** PiVista prefers HDMI, so the sound comes out of the TV or monitor. If your monitor has no speakers, plug headphones or speakers into the 3.5 mm jack, or plug in USB speakers, then choose them in **Settings → Sound output**. The choice is remembered.
 
@@ -187,6 +191,22 @@ Pick a TV zoom (100/125/150%) so the app is readable from the couch. Installed a
 Uploaded apps run from `http://localhost/userapps/…`, a separate browser origin from the TV interface, so an app can't control PiVista.
 
 ## Updating
+
+**From the TV:** Settings → System → **Update PiVista** shows whether a new version is available. Press OK and confirm. PiVista downloads the newest version through the GitHub API, installs it, and restarts by itself (about 1–3 minutes).
+
+**Private repository:** updates keep working if the repository is made private. Create a fine-grained GitHub token (GitHub → Settings → Developer settings → Fine-grained tokens, access to this repository only, permission **Contents: Read-only**). Enter it on the TV in Settings → System → **GitHub access token**; your phone's keyboard opens for it. The token is stored only on the Pi (`/var/lib/pivista/github-token`, readable by root only) and is never sent to phones. Or save it from the terminal:
+
+```bash
+echo 'github_pat_…' | sudo tee /var/lib/pivista/github-token >/dev/null && sudo chmod 600 /var/lib/pivista/github-token
+```
+
+Versions before 0.6.0 update through the public download link, so update to 0.6.0 or later **before** making the repository private. For a first install from a private repository, clone it with your token and run the installer from the checkout:
+
+```bash
+git clone -b claude/kind-mccarthy-xql5k2 https://<token>@github.com/pyrz-tr/PiVista.git && cd PiVista && sudo ./scripts/install.sh
+```
+
+**Other ways:**
 
 Run `sudo pivista update` (0.3.1 and later), or run the same install command again. It replaces the app in `/opt/pivista`, keeps your settings, paired phones and installed apps (`/var/lib/pivista`), and restarts the server:
 
@@ -249,7 +269,9 @@ pivista restart    # restart server + TV interface
 pivista disable    # don't start on boot (server + remote keep running)
 pivista enable     # start on boot again
 pivista doctor     # diagnose a black screen / problems, saves /tmp/pivista-doctor.txt
-pivista update     # download and install the latest version from the code branch
+pivista update     # download and install the latest version (GitHub API; uses the saved token if any)
+pivista desktop    # close PiVista and show the desktop / console
+pivista tv         # bring the PiVista TV screen back
 pivista unlock     # unlock the TV if the owner phone is lost
 pivista uninstall  # remove services and boot tweaks (keeps /opt/pivista and your settings)
 ```
@@ -355,7 +377,7 @@ packaging Debian package build
 
 `.github/workflows/build.yml` runs on every push (any branch, including `claude/kind-mccarthy-xql5k2`) and on pull requests. It runs the self-test, syntax-checks the shell scripts, builds `pivista_<version>_all.deb` (architecture-independent, with `node_modules` bundled) and uploads it as an artifact. Pushing a tag like `v0.3.0` also publishes a GitHub Release with the `.deb`.
 
-## Known limitations (v0.5)
+## Known limitations (v0.6)
 
 - Streaming services can change their web apps or block unusual user agents at any time. If one breaks, try a different user agent in `server/apps.js`.
 - Netflix/Max/Disney+ web players are made for mouse use. Use the D-pad where it works and the touchpad tab for the rest.
